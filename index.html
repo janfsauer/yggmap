@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>mindmaps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  /* ---- app shell (component styles live in styles.css) ---- */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  body { font-family: var(--mm-font-hand); color: var(--mm-ink); }
+
+  #viewport {
+    position: fixed; inset: 0;
+    touch-action: none;
+    cursor: default;
+  }
+  #viewport.panning { cursor: grabbing; }
+  #world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  #links { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; }
+  #nodes { position: absolute; left: 0; top: 0; }
+
+  #nodes .mm-node, #nodes .mm-ghost {
+    user-select: none; -webkit-user-select: none;
+  }
+  #nodes .mm-node.is-editing {
+    user-select: text; -webkit-user-select: text;
+    outline: none;
+  }
+  body.anim #nodes .is-placed { transition: left .3s ease, top .3s ease; }
+
+  .topbar {
+    position: fixed; top: 0; left: 0; right: 0;
+    display: flex; align-items: flex-start; justify-content: space-between;
+    padding: calc(14px + env(safe-area-inset-top)) 22px 0; z-index: 10; pointer-events: none;
+  }
+  .topbar > * { pointer-events: auto; }
+
+  #zoomctl { position: fixed; bottom: calc(20px + env(safe-area-inset-bottom)) ; left: 22px; z-index: 10; }
+  #helpbtn { position: fixed; bottom: calc(20px + env(safe-area-inset-bottom)); right: 22px; z-index: 10; }
+
+  #hintstrip { display: none; }
+  body.desktop #hintstrip { display: inline-flex; }
+
+  #actionbar {
+    display: none;
+    position: fixed; bottom: calc(18px + env(safe-area-inset-bottom)); left: 50%;
+    transform: translateX(-50%) rotate(-.4deg); z-index: 15;
+  }
+  body.mobile #actionbar.has-actions { display: inline-flex; }
+
+  #modepill {
+    display: none;
+    position: fixed; top: calc(16px + env(safe-area-inset-top)); left: 50%;
+    transform: translateX(-50%) rotate(-.5deg); z-index: 12;
+    align-items: center; gap: 2px;
+    background: var(--mm-card); border: 2px solid var(--mm-ink);
+    border-radius: var(--mm-wobble-3);
+    box-shadow: 2px 2.5px 0 rgba(58,53,50,.16);
+    padding: 3px 5px; font-size: 14.5px;
+  }
+  body.mobile #modepill { display: inline-flex; }
+  body.mobile .mm-saved { display: none; }
+  body.mobile .mm-wordmark { font-size: 24px; }
+  body.mobile #modepill { left: auto; right: 14px; transform: rotate(-.5deg); }
+  body.mobile #zoomctl { display: none; }
+  #modepill span { color: var(--mm-ink-faint); padding: 0 4px; }
+  #modepill button {
+    all: unset; cursor: pointer; padding: 1px 9px 0;
+    border-radius: var(--mm-wobble-3); color: var(--mm-ink-soft);
+  }
+  #modepill button.on { background: var(--mm-yellow); color: var(--mm-ink); }
+
+  #mobiletoggle {
+    position: fixed; bottom: calc(20px + env(safe-area-inset-bottom)); right: 74px; z-index: 10;
+    display: none;
+    height: 40px; padding: 0 14px;
+    background: var(--mm-card); border: 2.2px solid var(--mm-ink);
+    border-radius: var(--mm-wobble-4);
+    box-shadow: 2px 2.5px 0 rgba(58,53,50,.16);
+    font-family: var(--mm-font-hand); font-size: 15px; color: var(--mm-ink-soft);
+    cursor: pointer; align-items: center; transform: rotate(1deg);
+  }
+  body.can-toggle-mobile #mobiletoggle { display: inline-flex; }
+
+  #backdrop, #mapsbackdrop { display: none; }
+  #backdrop.open, #mapsbackdrop.open { display: grid; }
+
+  #firsthint {
+    display: none;
+    position: fixed; left: 50%; top: calc(50% + 52px);
+    transform: translateX(-50%) rotate(-1.5deg);
+    font-family: var(--mm-font-script); font-size: 21px;
+    color: var(--mm-ink-faint);
+    pointer-events: none; z-index: 5;
+    white-space: nowrap;
+  }
+  body.firstvisit #firsthint { display: block; }
+
+  #mapslist {
+    display: flex; flex-direction: column; gap: 3px;
+    max-height: 50vh; overflow-y: auto; margin-bottom: 18px;
+  }
+  .map-row {
+    display: flex; align-items: baseline; gap: 14px;
+    padding: 8px 12px 5px; cursor: pointer; font-size: 17.5px;
+    border-radius: 14px 5px 16px 5px / 5px 16px 5px 14px;
+  }
+  .map-row:hover { background: rgba(255, 230, 109, .45); }
+  .map-row.current { background: rgba(255, 230, 109, .7); }
+  .map-row .mtitle { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .map-row .mdate { font-family: var(--mm-font-script); font-size: 14.5px; color: var(--mm-ink-faint); white-space: nowrap; }
+  .map-row .mdel { all: unset; cursor: pointer; color: var(--mm-ink-faint); font-size: 14px; padding: 2px 6px; font-family: var(--mm-font-hand); }
+  .map-row .mdel:hover { color: #c25b4a; }
+  .maps-actions { display: flex; align-items: center; gap: 10px; }
+  .maps-actions .mini {
+    all: unset; cursor: pointer;
+    font-family: var(--mm-font-hand); font-size: 15.5px; color: var(--mm-ink-soft);
+    border: 2px solid rgba(58, 53, 50, .4);
+    border-radius: var(--mm-wobble-3);
+    padding: 4px 14px 2px;
+  }
+  .maps-actions .mini:hover { color: var(--mm-ink); border-color: var(--mm-ink); }
+  .maps-actions .mini.accent { border-color: var(--mm-marker); color: var(--mm-ink); background: rgba(255, 138, 92, .1); }
+
+  #toasts {
+    position: fixed; bottom: calc(88px + env(safe-area-inset-bottom)); left: 50%;
+    transform: translateX(-50%); z-index: 50;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .mm-toast button {
+    all: unset; cursor: pointer; color: var(--mm-marker); margin-left: 4px;
+    font-family: var(--mm-font-hand);
+  }
+</style>
+</head>
+<body>
+  <div class="mm-canvas"></div>
+
+  <div id="viewport">
+    <div id="world">
+      <svg id="links" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div id="nodes"></div>
+    </div>
+  </div>
+
+  <div class="topbar">
+    <div style="display:flex; align-items:center; gap:16px">
+      <span class="mm-wordmark">mindmaps</span>
+      <button class="mm-help" id="mapsbtn" style="width:auto; height:34px; padding:0 14px; font-size:15px; transform:rotate(-1deg)">☰ my maps</button>
+    </div>
+    <span class="mm-saved" id="saved">all changes saved locally</span>
+  </div>
+
+  <div class="mm-backdrop" id="mapsbackdrop">
+    <div class="mm-panel" style="width:min(480px, 92vw)">
+      <h3 class="mm-panel-title">my maps <small>stored only in this browser</small></h3>
+      <div id="mapslist"></div>
+      <div class="maps-actions">
+        <button class="mini accent" id="newmapbtn">＋ new map</button>
+        <span style="flex:1"></span>
+        <button class="mini" id="exportbtn">export all</button>
+        <button class="mini" id="importbtn">import</button>
+        <input type="file" id="importfile" accept="application/json,.json" hidden>
+      </div>
+    </div>
+  </div>
+
+  <div id="modepill">
+    <span>create via</span>
+    <button id="mode-ghosts">ghosts</button>
+    <button id="mode-bar">bar</button>
+  </div>
+
+  <div class="mm-zoom" id="zoomctl"><button id="zoom-out">−</button><span id="zoom-val">100%</span><button id="zoom-in">+</button></div>
+
+  <div class="mm-hintstrip mm-hintstrip--fixed" id="hintstrip"></div>
+  <div class="mm-actionbar" id="actionbar"></div>
+
+  <button id="mobiletoggle">📱 mobile preview</button>
+  <button class="mm-help" id="helpbtn">?</button>
+
+  <div class="mm-backdrop" id="backdrop">
+    <div class="mm-panel">
+      <h3 class="mm-panel-title">keyboard shortcuts <small>press ? anytime · Esc to close</small></h3>
+      <div class="mm-panel-groups">
+        <div class="mm-panel-group">
+          <h4>create</h4>
+          <div class="mm-shortcut-row"><span>child of focused node</span><span class="keys"><kbd class="mm-kbd">Tab</kbd></span></div>
+          <div class="mm-shortcut-row"><span>sibling below</span><span class="keys"><kbd class="mm-kbd">Enter</kbd></span></div>
+        </div>
+        <div class="mm-panel-group">
+          <h4>edit</h4>
+          <div class="mm-shortcut-row"><span>rename — just type</span><span class="keys"><kbd class="mm-kbd">a…z</kbd></span></div>
+          <div class="mm-shortcut-row"><span>delete node</span><span class="keys"><kbd class="mm-kbd">⌫</kbd></span></div>
+          <div class="mm-shortcut-row"><span>cycle color</span><span class="keys"><kbd class="mm-kbd">C</kbd></span></div>
+          <div class="mm-shortcut-row"><span>undo / redo</span><span class="keys"><kbd class="mm-kbd">⌘Z</kbd><kbd class="mm-kbd">⇧⌘Z</kbd></span></div>
+        </div>
+        <div class="mm-panel-group">
+          <h4>navigate</h4>
+          <div class="mm-shortcut-row"><span>move focus</span><span class="keys"><kbd class="mm-kbd">←↑↓→</kbd></span></div>
+          <div class="mm-shortcut-row"><span>collapse / expand</span><span class="keys"><kbd class="mm-kbd">.</kbd></span></div>
+        </div>
+        <div class="mm-panel-group">
+          <h4>view</h4>
+          <div class="mm-shortcut-row"><span>pan canvas</span><span class="keys">drag or <kbd class="mm-kbd">Space</kbd></span></div>
+          <div class="mm-shortcut-row"><span>zoom</span><span class="keys"><kbd class="mm-kbd">+</kbd><kbd class="mm-kbd">−</kbd> / pinch</span></div>
+          <div class="mm-shortcut-row"><span>fit map</span><span class="keys"><kbd class="mm-kbd">0</kbd></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="firsthint">type your central idea — press Enter when done</div>
+
+  <div id="toasts"></div>
+
+  <script src="sketch.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

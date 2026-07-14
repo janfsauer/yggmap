@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>mindmaps — mobile concepts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--mm-paper);
+    color: var(--mm-ink);
+    font-family: var(--mm-font-hand);
+    -webkit-font-smoothing: antialiased;
+    padding: 44px 30px 80px;
+  }
+  .grain {
+    position: fixed; inset: 0; opacity: .5; pointer-events: none; z-index: -1;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  h1 {
+    font-family: var(--mm-font-script); font-size: 44px; font-weight: 700;
+    text-align: center; transform: rotate(-.5deg); margin-bottom: 6px;
+  }
+  .intro {
+    text-align: center; font-size: 17px; color: var(--mm-ink-soft);
+    max-width: 640px; margin: 0 auto 12px;
+  }
+  .legend {
+    text-align: center; font-family: var(--mm-font-script); font-size: 18px;
+    color: var(--mm-ink-faint); margin-bottom: 42px;
+  }
+
+  .row { display: flex; gap: 56px; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
+  .concept { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+
+  /* ---- phone frame (presentation only) ---- */
+  .phone {
+    position: relative; width: 390px; height: 780px; flex-shrink: 0;
+    background: var(--mm-paper);
+    border: 11px solid #2c2925; border-radius: 54px;
+    overflow: hidden;
+    box-shadow: 14px 20px 50px rgba(58, 53, 50, .28);
+  }
+  .island {
+    position: absolute; top: 11px; left: 50%; transform: translateX(-50%);
+    width: 108px; height: 28px; background: #2c2925; border-radius: 18px; z-index: 30;
+  }
+  .homebar {
+    position: absolute; bottom: 7px; left: 50%; transform: translateX(-50%);
+    width: 126px; height: 5px; border-radius: 3px; background: rgba(58, 53, 50, .35); z-index: 30;
+  }
+  .screen { position: absolute; inset: 0; }
+  .screen .pgrain {
+    position: absolute; inset: 0; opacity: .5; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .screen svg.links { position: absolute; inset: 0; }
+  .screen .mm-wordmark { position: absolute; left: 20px; top: 46px; font-size: 22px; z-index: 5; }
+  .screen .mm-saved { position: absolute; right: 18px; top: 52px; font-size: 14px; z-index: 5; }
+
+  .colordots { display: inline-flex; gap: 2px; align-items: center; }
+  .colordots i {
+    width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+    border: 1.3px solid rgba(58, 53, 50, .55);
+  }
+
+  /* caption cards under phones */
+  .caption { width: 390px; }
+  .caption h3 {
+    font-family: var(--mm-font-script); font-size: 26px; font-weight: 700;
+    margin-bottom: 4px; transform: rotate(-.4deg);
+  }
+  .caption h3 .reco { color: var(--mm-marker); font-size: 19px; margin-left: 8px; }
+  .caption ul { list-style: none; }
+  .caption li { font-size: 15.5px; color: var(--mm-ink-soft); padding-left: 18px; position: relative; margin-bottom: 2px; }
+  .caption li::before { content: "→"; position: absolute; left: 0; color: var(--mm-ink-faint); }
+
+  /* handwritten annotation floating on a phone */
+  .callout {
+    position: absolute; z-index: 25;
+    font-family: var(--mm-font-script); font-size: 17px; font-weight: 500;
+    color: var(--mm-marker); white-space: nowrap; pointer-events: none;
+  }
+
+  /* ---- OS keyboard mock (deliberately NOT sketchy — it's the OS) ---- */
+  .kb {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 258px; z-index: 20;
+    background: #d3d6db;
+    padding: 10px 4px 34px;
+    display: flex; flex-direction: column; gap: 9px;
+    font-family: -apple-system, "Helvetica Neue", sans-serif;
+  }
+  .kbrow { display: flex; gap: 5px; justify-content: center; }
+  .key {
+    flex: 0 0 32px; height: 42px; background: #fff; border-radius: 6px;
+    box-shadow: 0 1.5px 0 rgba(0, 0, 0, .28);
+    display: grid; place-items: center; font-size: 16px; color: #1c1c1e;
+  }
+  .key.wide { flex-basis: 46px; background: #b3b9c2; font-size: 13px; }
+  .key.space { flex-basis: 176px; }
+  .key.done { flex-basis: 88px; background: #0a84ff; color: #fff; font-size: 15px; }
+</style>
+</head>
+<body>
+<div class="grain"></div>
+
+<h1>mindmaps on the phone</h1>
+<p class="intro">Two concepts for node actions, same design system. Third phone: what editing looks like with the keyboard open (applies to whichever concept wins).</p>
+<p class="legend">gestures everywhere: tap = focus · tap again = edit · long-press = menu · drag node = move · one finger on paper = pan · pinch = zoom</p>
+
+<div class="row">
+
+  <!-- ============ concept A: tappable ghosts + action bar ============ -->
+  <div class="concept">
+    <div class="phone">
+      <div class="island"></div>
+      <div class="screen" id="phoneA">
+        <div class="pgrain"></div>
+        <svg class="links" width="390" height="780"></svg>
+
+        <span class="mm-wordmark">mindmaps</span>
+        <span class="mm-saved">saved</span>
+
+        <div class="mm-node mm-node--root is-placed" id="a-root" style="left:195px; top:180px; --r:-1deg; font-size:24px">Trip to Japan</div>
+        <div class="mm-node b-pink is-placed" id="a-kyoto" data-parent="a-root" style="left:82px; top:318px; --r:1deg">Kyoto</div>
+        <div class="mm-node b-green is-placed" id="a-budget" data-parent="a-root" style="left:302px; top:305px; --r:-.8deg">Budget</div>
+        <div class="mm-node b-blue is-focused is-placed" id="a-tokyo" data-parent="a-root" style="left:175px; top:448px; --r:-.7deg">Tokyo</div>
+
+        <div class="mm-ghost mm-ghost--tap is-placed" id="a-ghchild" data-parent="a-tokyo" data-ghost style="left:272px; top:562px; --r:1.2deg">＋ child</div>
+        <div class="mm-ghost mm-ghost--tap is-placed" id="a-ghsib" data-parent="a-root" data-ghost style="left:92px; top:582px; --r:-1deg">＋ sibling</div>
+        <span class="callout" style="left:148px; top:614px; transform:rotate(2deg)">tap to create it right here!</span>
+
+        <div class="mm-actionbar" style="position:absolute; left:50%; bottom:26px; transform:translateX(-50%) rotate(-.4deg); z-index:15">
+          <button class="mm-action"><span class="glyph">✎</span><span class="label">edit</span></button>
+          <button class="mm-action"><span class="glyph colordots"><i style="background:var(--mm-yellow)"></i><i style="background:var(--mm-pink)"></i><i style="background:var(--mm-blue)"></i></span><span class="label">color</span></button>
+          <button class="mm-action"><span class="glyph">⌄</span><span class="label">collapse</span></button>
+          <button class="mm-action mm-action--danger"><span class="glyph">✕</span><span class="label">delete</span></button>
+        </div>
+      </div>
+      <div class="homebar"></div>
+    </div>
+    <div class="caption">
+      <h3>A — tappable ghosts<span class="reco">← recommended</span></h3>
+      <ul>
+        <li>the dashed ghost <b>is</b> the button — tap it, node appears right there</li>
+        <li>identical metaphor to desktop (there: “press Tab”, here: tap)</li>
+        <li>edit / color / collapse / delete live in the thumb-zone bar</li>
+        <li>ghosts fade away as you use them, same as desktop</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ============ concept B: satellite buttons ============ -->
+  <div class="concept">
+    <div class="phone">
+      <div class="island"></div>
+      <div class="screen" id="phoneB">
+        <div class="pgrain"></div>
+        <svg class="links" width="390" height="780"></svg>
+
+        <span class="mm-wordmark">mindmaps</span>
+        <span class="mm-saved">saved</span>
+
+        <div class="mm-node mm-node--root is-placed" id="b-root" style="left:195px; top:180px; --r:-1deg; font-size:24px">Trip to Japan</div>
+        <div class="mm-node b-pink is-placed" id="b-kyoto" data-parent="b-root" style="left:82px; top:318px; --r:1deg">Kyoto</div>
+        <div class="mm-node b-green is-placed" id="b-budget" data-parent="b-root" style="left:302px; top:305px; --r:-.8deg">Budget</div>
+        <div class="mm-node b-blue is-focused is-placed" id="b-tokyo" data-parent="b-root" style="left:175px; top:448px; --r:-.7deg">Tokyo</div>
+
+        <button class="mm-satellite mm-satellite--accent" style="left:262px; top:412px; --r:2deg">✎</button>
+        <span class="mm-satellite-label" style="left:262px; top:378px">edit</span>
+        <button class="mm-satellite mm-satellite--accent" style="left:282px; top:490px; --r:-1deg">＋</button>
+        <span class="mm-satellite-label" style="left:282px; top:516px">child</span>
+        <button class="mm-satellite mm-satellite--accent" style="left:175px; top:530px; --r:1deg">＋</button>
+        <span class="mm-satellite-label" style="left:175px; top:556px">sibling</span>
+        <button class="mm-satellite mm-satellite--danger" style="left:82px; top:478px; --r:-2deg">✕</button>
+        <span class="mm-satellite-label" style="left:82px; top:504px">delete</span>
+      </div>
+      <div class="homebar"></div>
+    </div>
+    <div class="caption">
+      <h3>B — satellite buttons</h3>
+      <ul>
+        <li>classic pattern (SimpleMind, Miro): everything at the node</li>
+        <li>fast once learned, no eye travel to the bottom</li>
+        <li>but: finger covers them, they cover neighbor nodes,<br>and near screen edges they must reflow</li>
+        <li>new node position is not shown — less educational</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ============ editing state ============ -->
+  <div class="concept">
+    <div class="phone">
+      <div class="island"></div>
+      <div class="screen" id="phoneC">
+        <div class="pgrain"></div>
+        <svg class="links" width="390" height="780"></svg>
+
+        <span class="mm-wordmark">mindmaps</span>
+
+        <div class="mm-node mm-node--root is-placed" id="c-root" style="left:215px; top:108px; --r:-1deg; font-size:24px">Trip to Japan</div>
+        <div class="mm-node b-pink is-placed" id="c-kyoto" data-parent="c-root" style="left:70px; top:268px; --r:1deg">Kyoto</div>
+        <div class="mm-node b-green is-placed" id="c-budget" data-parent="c-root" style="left:318px; top:222px; --r:-.8deg">Budget</div>
+        <div class="mm-node b-blue is-editing is-placed" id="c-tokyo" data-parent="c-root" style="left:195px; top:368px; --r:-.7deg">Tokyo<span class="mm-caret"></span></div>
+
+        <span class="callout" style="left:30px; top:399px; transform:rotate(-1.5deg); font-size:15px">canvas pans up: node stays visible ↑</span>
+
+        <div class="mm-actionbar" style="position:absolute; left:50%; bottom:270px; transform:translateX(-50%) rotate(-.4deg); z-index:22; padding:6px 10px; gap:8px">
+          <button class="mm-action" style="width:52px; height:46px"><span class="glyph">✕</span><span class="label">cancel</span></button>
+          <button class="mm-action" style="width:52px; height:46px"><span class="glyph">＋</span><span class="label">child</span></button>
+          <button class="mm-action mm-action--accent" style="width:52px; height:46px"><span class="glyph">✓</span><span class="label">done</span></button>
+        </div>
+
+        <div class="kb">
+          <div class="kbrow"><span class="key">Q</span><span class="key">W</span><span class="key">E</span><span class="key">R</span><span class="key">T</span><span class="key">Y</span><span class="key">U</span><span class="key">I</span><span class="key">O</span><span class="key">P</span></div>
+          <div class="kbrow"><span class="key">A</span><span class="key">S</span><span class="key">D</span><span class="key">F</span><span class="key">G</span><span class="key">H</span><span class="key">J</span><span class="key">K</span><span class="key">L</span></div>
+          <div class="kbrow"><span class="key wide">⇧</span><span class="key">Z</span><span class="key">X</span><span class="key">C</span><span class="key">V</span><span class="key">B</span><span class="key">N</span><span class="key">M</span><span class="key wide">⌫</span></div>
+          <div class="kbrow"><span class="key wide">123</span><span class="key space">space</span><span class="key done">done</span></div>
+        </div>
+      </div>
+      <div class="homebar"></div>
+    </div>
+    <div class="caption">
+      <h3>editing — either concept</h3>
+      <ul>
+        <li>keyboard claims ~40% of the screen — the canvas pans to compensate</li>
+        <li>sketchy accessory bar above the OS keyboard: cancel / add child / done</li>
+        <li>“＋ child” while editing = the mobile equivalent of desktop’s <b>Tab</b> chain: type, add child, keep flowing</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<script src="../sketch.js"></script>
+<script>
+  // wire connectors inside each phone from DOM positions
+  document.querySelectorAll('.screen').forEach(screen => {
+    const svg = screen.querySelector('svg.links');
+    screen.querySelectorAll('[data-parent]').forEach(el => {
+      const p = screen.querySelector('#' + el.dataset.parent);
+      const a = { x: p.offsetLeft, y: p.offsetTop, w: p.offsetWidth, h: p.offsetHeight };
+      const b = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight };
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const ghost = 'ghost' in el.dataset;
+      if (Math.abs(dy) > Math.abs(dx)) {
+        const dir = dy >= 0 ? 1 : -1;
+        MMSketch.connect(svg,
+          a.x, a.y + dir * (a.h / 2 + 4),
+          b.x, b.y - dir * (b.h / 2 + 4),
+          { axis: 'v', ghost });
+      } else {
+        const dir = dx >= 0 ? 1 : -1;
+        MMSketch.connect(svg,
+          a.x + dir * (a.w / 2 + 4), a.y,
+          b.x - dir * (b.w / 2 + 4), b.y,
+          { axis: 'h', ghost });
+      }
+    });
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>mindmaps — component book</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  /* ---- book-only chrome (not part of the design system) ---- */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--mm-paper);
+    color: var(--mm-ink);
+    font-family: var(--mm-font-hand);
+    -webkit-font-smoothing: antialiased;
+  }
+  .grain {
+    position: fixed; inset: 0; opacity: .5; pointer-events: none; z-index: -1;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .layout { display: flex; max-width: 1280px; margin: 0 auto; }
+
+  nav {
+    position: sticky; top: 0; align-self: flex-start;
+    width: 210px; flex-shrink: 0;
+    padding: 34px 10px 34px 28px;
+    height: 100vh; overflow-y: auto;
+  }
+  nav .mm-wordmark { font-size: 34px; margin-bottom: 4px; }
+  nav .sub {
+    font-family: var(--mm-font-script); font-size: 17px;
+    color: var(--mm-ink-faint); margin-bottom: 26px; transform: rotate(-1deg);
+  }
+  nav a {
+    display: block; padding: 4px 10px 2px;
+    color: var(--mm-ink-soft); text-decoration: none; font-size: 17px;
+    border-radius: 14px 5px 16px 5px / 5px 16px 5px 14px;
+  }
+  nav a:hover { background: rgba(255, 230, 109, .5); color: var(--mm-ink); }
+
+  main { flex: 1; padding: 40px 40px 120px; min-width: 0; }
+
+  section { margin-bottom: 64px; }
+  h2 {
+    font-family: var(--mm-font-script); font-size: 34px; font-weight: 700;
+    margin-bottom: 6px; transform: rotate(-.5deg);
+  }
+  .section-note { font-size: 16px; color: var(--mm-ink-soft); margin-bottom: 22px; max-width: 640px; }
+
+  .specimens { display: flex; flex-wrap: wrap; gap: 18px; }
+  .specimen {
+    background: rgba(255, 253, 246, .6);
+    border: 1.8px solid rgba(58, 53, 50, .25);
+    border-radius: 18px 8px 20px 8px / 8px 20px 8px 18px;
+    padding: 26px 26px 14px;
+    display: flex; flex-direction: column; gap: 18px;
+    min-width: 170px;
+  }
+  .specimen .stage2 {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    min-height: 64px;
+  }
+  .specimen figcaption { text-align: center; }
+  .specimen .name { font-size: 15.5px; color: var(--mm-ink); }
+  .specimen code {
+    display: block; font-family: ui-monospace, Menlo, monospace;
+    font-size: 11px; color: var(--mm-ink-faint); margin-top: 2px;
+  }
+  .specimen.wide { flex-basis: 100%; }
+
+  .swatches { display: flex; flex-wrap: wrap; gap: 14px; }
+  .swatch { text-align: center; font-size: 14px; color: var(--mm-ink-soft); }
+  .swatch .chip {
+    width: 84px; height: 56px; border: 2.2px solid var(--mm-ink);
+    border-radius: 60px 8px 60px 8px / 8px 60px 8px 60px;
+    box-shadow: var(--mm-shadow); margin-bottom: 6px;
+  }
+  .swatch code { font-family: ui-monospace, Menlo, monospace; font-size: 10.5px; color: var(--mm-ink-faint); }
+
+  .type-row { display: flex; align-items: baseline; gap: 24px; margin-bottom: 10px; }
+  .type-row .demo { font-size: 30px; }
+  .type-row .demo.script { font-family: var(--mm-font-script); font-size: 36px; }
+  .type-row code { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--mm-ink-faint); }
+
+  svg.spec-links { display: block; }
+
+  /* mini-canvas for composed demos */
+  .mini-canvas {
+    position: relative; width: 100%; height: 240px;
+    background: var(--mm-paper);
+    border: 1.8px solid rgba(58, 53, 50, .25);
+    border-radius: 14px; overflow: hidden;
+  }
+</style>
+</head>
+<body>
+<div class="grain"></div>
+
+<div class="layout">
+  <nav>
+    <div class="mm-wordmark">mindmaps</div>
+    <div class="sub">component book</div>
+    <a href="#tokens">tokens</a>
+    <a href="#nodes">nodes</a>
+    <a href="#ghosts">ghost hints</a>
+    <a href="#connectors">connectors</a>
+    <a href="#keycaps">keycaps &amp; hints</a>
+    <a href="#chrome">chrome</a>
+    <a href="#menu">context menu</a>
+    <a href="#panel">shortcuts panel</a>
+    <a href="#feedback">toast &amp; marquee</a>
+    <a href="#empty">empty canvas</a>
+  </nav>
+
+  <main>
+
+    <!-- ============ tokens ============ -->
+    <section id="tokens">
+      <h2>tokens</h2>
+      <p class="section-note">Everything downstream is built from these. Colors are CSS custom properties in <code style="display:inline">styles.css</code>.</p>
+      <div class="swatches" style="margin-bottom:28px">
+        <figure class="swatch"><div class="chip" style="background:var(--mm-paper)"></div>paper<code>--mm-paper</code></figure>
+        <figure class="swatch"><div class="chip" style="background:var(--mm-card)"></div>card<code>--mm-card</code></figure>
+        <figure class="swatch"><div class="chip" style="background:var(--mm-ink)"></div>ink<code>--mm-ink</code></figure>
+        <figure class="swatch"><div class="chip" style="background:var(--mm-yellow)"></div>yellow<code>--mm-yellow</code></figure>
+        <figure class="swatch"><div class="chip" style="background:var(--mm-pink)"></div>pink<code>--mm-pink</code></figure>
+        <figure class="swatch"><div class="chip" style="background:var(--mm-blue)"></div>blue<code>--mm-blue</code></figure>
+        <figure class="swatch"><div class="chip" style="background:var(--mm-green)"></div>green<code>--mm-green</code></figure>
+        <figure class="swatch"><div class="chip" style="background:var(--mm-marker)"></div>marker<code>--mm-marker</code></figure>
+      </div>
+      <div class="type-row"><span class="demo">Patrick Hand — node text, UI</span><code>--mm-font-hand</code></div>
+      <div class="type-row"><span class="demo script">Caveat — headings &amp; annotations</span><code>--mm-font-script</code></div>
+    </section>
+
+    <!-- ============ nodes ============ -->
+    <section id="nodes">
+      <h2>nodes</h2>
+      <p class="section-note">One node component, many states. Only ever one <b>focused</b> node — the node itself grows, its border goes ink-heavy, its shadow deepens. Multi-selection uses calm ink dashes.</p>
+      <div class="specimens">
+        <figure class="specimen"><div class="stage2"><div class="mm-node">default node</div></div><figcaption><span class="name">default</span><code>.mm-node</code></figcaption></figure>
+        <figure class="specimen"><div class="stage2"><div class="mm-node is-hover">hovered</div></div><figcaption><span class="name">hover</span><code>.mm-node.is-hover</code></figcaption></figure>
+        <figure class="specimen"><div class="stage2"><div class="mm-node is-focused">focused</div></div><figcaption><span class="name">focused (keyboard)</span><code>.mm-node.is-focused</code></figcaption></figure>
+        <figure class="specimen"><div class="stage2"><div class="mm-node is-editing">editing me<span class="mm-caret"></span></div></div><figcaption><span class="name">editing</span><code>.mm-node.is-editing</code></figcaption></figure>
+        <figure class="specimen"><div class="stage2"><div class="mm-node is-selected">selected</div></div><figcaption><span class="name">multi-selected</span><code>.mm-node.is-selected</code></figcaption></figure>
+        <figure class="specimen"><div class="stage2"><div class="mm-node is-dragging">dragging…</div></div><figcaption><span class="name">dragging</span><code>.mm-node.is-dragging</code></figcaption></figure>
+        <figure class="specimen"><div class="stage2"><div class="mm-node mm-node--root">Root idea</div></div><figcaption><span class="name">root</span><code>.mm-node--root</code></figcaption></figure>
+        <figure class="specimen"><div class="stage2"><div class="mm-node mm-node--leaf">a small leaf</div></div><figcaption><span class="name">leaf</span><code>.mm-node--leaf</code></figcaption></figure>
+        <figure class="specimen"><div class="stage2"><div class="mm-node">collapsed branch<span class="mm-badge">+3</span></div></div><figcaption><span class="name">collapsed children</span><code>.mm-badge</code></figcaption></figure>
+        <figure class="specimen"><div class="stage2"><div class="mm-node">a longer thought that wraps onto several lines gracefully</div></div><figcaption><span class="name">text wrapping</span><code>max-width: 260px</code></figcaption></figure>
+        <figure class="specimen">
+          <div class="stage2" style="gap:14px; flex-wrap:wrap">
+            <div class="mm-node b-yellow">yellow</div>
+            <div class="mm-node b-pink">pink</div>
+            <div class="mm-node b-blue">blue</div>
+            <div class="mm-node b-green">green</div>
+          </div>
+          <figcaption><span class="name">branch colors</span><code>.b-yellow .b-pink .b-blue .b-green</code></figcaption>
+        </figure>
+        <figure class="specimen"><div class="stage2" style="padding-bottom:26px"><div class="mm-node is-focused">Schedule<span class="mm-node-note">just start typing to edit ✎</span></div></div><figcaption><span class="name">helper note</span><code>.mm-node-note</code></figcaption></figure>
+      </div>
+    </section>
+
+    <!-- ============ ghosts ============ -->
+    <section id="ghosts">
+      <h2>ghost hints</h2>
+      <p class="section-note">Quiet gray placeholders around the focused node, showing <b>where</b> a key would create something — orange lives only on the keycap. They fade in steps as the user proves they know the shortcut, down to a faint whisper — never fully gone (a vanished hint reads as a bug). On mobile the tappable variant keeps the marker affordance.</p>
+      <div class="specimens">
+        <figure class="specimen"><div class="stage2"><div class="mm-ghost"><kbd class="mm-kbd mm-kbd--accent">Tab</kbd> child</div></div><figcaption><span class="name">new user</span><code>.mm-ghost</code></figcaption></figure>
+        <figure class="specimen"><div class="stage2"><div class="mm-ghost learn-1"><kbd class="mm-kbd mm-kbd--accent">Tab</kbd> child</div></div><figcaption><span class="name">used ~3 times</span><code>.mm-ghost.learn-1</code></figcaption></figure>
+        <figure class="specimen"><div class="stage2"><div class="mm-ghost learn-2"><kbd class="mm-kbd mm-kbd--accent">Tab</kbd> child</div></div><figcaption><span class="name">almost learned</span><code>.mm-ghost.learn-2</code></figcaption></figure>
+        <figure class="specimen">
+          <div class="stage2" style="padding-top:24px">
+            <div class="mm-ghost" style="--r:1deg; position:relative">
+              <kbd class="mm-kbd mm-kbd--accent">Enter</kbd> sibling
+              <span class="mm-ghost-note" style="left:12px; top:-32px; transform:rotate(-3deg)">a sibling idea!</span>
+            </div>
+          </div>
+          <figcaption><span class="name">with annotation</span><code>.mm-ghost-note</code></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============ connectors ============ -->
+    <section id="connectors">
+      <h2>connectors</h2>
+      <p class="section-note">Drawn by <code style="display:inline">sketch.js</code>: a jittered bezier plus a faint offset “pencil echo”. Ghost links are marker-dashed; hovering a node makes its branch <i>hot</i>.</p>
+      <div class="specimens">
+        <figure class="specimen"><div class="stage2"><svg class="spec-links" id="link-normal" width="300" height="90"></svg></div><figcaption><span class="name">normal + echo</span><code>.mm-link + .mm-link--echo</code></figcaption></figure>
+        <figure class="specimen"><div class="stage2"><svg class="spec-links" id="link-ghost" width="300" height="90"></svg></div><figcaption><span class="name">ghost</span><code>.mm-link--ghost</code></figcaption></figure>
+        <figure class="specimen"><div class="stage2"><svg class="spec-links" id="link-hot" width="300" height="90"></svg></div><figcaption><span class="name">branch hover</span><code>.mm-link.is-hot</code></figcaption></figure>
+      </div>
+    </section>
+
+    <!-- ============ keycaps ============ -->
+    <section id="keycaps">
+      <h2>keycaps &amp; hint strips</h2>
+      <p class="section-note">The hint strip is contextual — its content follows what the user can do <i>right now</i>.</p>
+      <div class="specimens">
+        <figure class="specimen">
+          <div class="stage2" style="gap:10px"><kbd class="mm-kbd">Tab</kbd><kbd class="mm-kbd">Enter</kbd><kbd class="mm-kbd">⌫</kbd><kbd class="mm-kbd">Space</kbd><kbd class="mm-kbd">⌘</kbd><kbd class="mm-kbd">?</kbd><kbd class="mm-kbd mm-kbd--accent">Tab</kbd></div>
+          <figcaption><span class="name">keycaps</span><code>.mm-kbd / .mm-kbd--accent</code></figcaption>
+        </figure>
+        <figure class="specimen wide">
+          <div class="stage2"><div class="mm-hintstrip">
+            <span><kbd class="mm-kbd">Tab</kbd> child</span>
+            <span><kbd class="mm-kbd">Enter</kbd> sibling</span>
+            <span><kbd class="mm-kbd">⌫</kbd> delete</span>
+            <span><kbd class="mm-kbd">Space</kbd> pan</span>
+            <span><kbd class="mm-kbd">?</kbd> all shortcuts</span>
+          </div></div>
+          <figcaption><span class="name">hint strip — node selected</span><code>.mm-hintstrip</code></figcaption>
+        </figure>
+        <figure class="specimen wide">
+          <div class="stage2"><div class="mm-hintstrip">
+            <span><kbd class="mm-kbd">Enter</kbd> done</span>
+            <span><kbd class="mm-kbd">Esc</kbd> cancel</span>
+            <span><kbd class="mm-kbd">⇧Enter</kbd> new line</span>
+          </div></div>
+          <figcaption><span class="name">hint strip — while editing</span><code>.mm-hintstrip</code></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============ chrome ============ -->
+    <section id="chrome">
+      <h2>chrome</h2>
+      <p class="section-note">Everything that isn’t the map. Deliberately little of it.</p>
+      <div class="specimens">
+        <figure class="specimen"><div class="stage2"><span class="mm-wordmark">mindmaps</span></div><figcaption><span class="name">wordmark</span><code>.mm-wordmark</code></figcaption></figure>
+        <figure class="specimen"><div class="stage2"><span class="mm-saved">all changes saved locally</span></div><figcaption><span class="name">saved indicator</span><code>.mm-saved</code></figcaption></figure>
+        <figure class="specimen"><div class="stage2"><div class="mm-zoom"><button>−</button>100%<button>+</button></div></div><figcaption><span class="name">zoom</span><code>.mm-zoom</code></figcaption></figure>
+        <figure class="specimen"><div class="stage2"><button class="mm-help">?</button></div><figcaption><span class="name">help</span><code>.mm-help</code></figcaption></figure>
+      </div>
+    </section>
+
+    <!-- ============ menu ============ -->
+    <section id="menu">
+      <h2>context menu</h2>
+      <p class="section-note">Right-click on a node. Every item shows its keyboard route — the menu teaches its own obsolescence.</p>
+      <div class="specimens">
+        <figure class="specimen">
+          <div class="stage2">
+            <div class="mm-menu">
+              <div class="mm-menu-item">add child <kbd class="mm-kbd">Tab</kbd></div>
+              <div class="mm-menu-item is-active">add sibling <kbd class="mm-kbd">Enter</kbd></div>
+              <hr class="mm-menu-sep">
+              <div class="mm-menu-item">change color <kbd class="mm-kbd">C</kbd></div>
+              <div class="mm-menu-item">collapse <kbd class="mm-kbd">.</kbd></div>
+              <hr class="mm-menu-sep">
+              <div class="mm-menu-item mm-menu-item--danger">delete <kbd class="mm-kbd">⌫</kbd></div>
+            </div>
+          </div>
+          <figcaption><span class="name">context menu</span><code>.mm-menu / .mm-menu-item</code></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============ panel ============ -->
+    <section id="panel">
+      <h2>shortcuts panel</h2>
+      <p class="section-note">Opens with <kbd class="mm-kbd" style="font-size:13px">?</kbd> — shown here without its backdrop (<code style="display:inline">.mm-backdrop</code>).</p>
+      <div class="specimens">
+        <figure class="specimen wide">
+          <div class="stage2" style="padding: 10px 0">
+            <div class="mm-panel">
+              <h3 class="mm-panel-title">keyboard shortcuts <small>press ? anytime</small></h3>
+              <div class="mm-panel-groups">
+                <div class="mm-panel-group">
+                  <h4>create</h4>
+                  <div class="mm-shortcut-row"><span>child of focused node</span><span class="keys"><kbd class="mm-kbd">Tab</kbd></span></div>
+                  <div class="mm-shortcut-row"><span>sibling below</span><span class="keys"><kbd class="mm-kbd">Enter</kbd></span></div>
+                  <div class="mm-shortcut-row"><span>parent above</span><span class="keys"><kbd class="mm-kbd">⇧</kbd><kbd class="mm-kbd">Tab</kbd></span></div>
+                </div>
+                <div class="mm-panel-group">
+                  <h4>edit</h4>
+                  <div class="mm-shortcut-row"><span>rename — just type</span><span class="keys"><kbd class="mm-kbd">a…z</kbd></span></div>
+                  <div class="mm-shortcut-row"><span>delete node</span><span class="keys"><kbd class="mm-kbd">⌫</kbd></span></div>
+                  <div class="mm-shortcut-row"><span>undo</span><span class="keys"><kbd class="mm-kbd">⌘</kbd><kbd class="mm-kbd">Z</kbd></span></div>
+                </div>
+                <div class="mm-panel-group">
+                  <h4>navigate</h4>
+                  <div class="mm-shortcut-row"><span>move focus</span><span class="keys"><kbd class="mm-kbd">←↑↓→</kbd></span></div>
+                  <div class="mm-shortcut-row"><span>collapse / expand</span><span class="keys"><kbd class="mm-kbd">.</kbd></span></div>
+                </div>
+                <div class="mm-panel-group">
+                  <h4>view</h4>
+                  <div class="mm-shortcut-row"><span>pan canvas</span><span class="keys"><kbd class="mm-kbd">Space</kbd>+drag</span></div>
+                  <div class="mm-shortcut-row"><span>zoom</span><span class="keys"><kbd class="mm-kbd">⌘</kbd><kbd class="mm-kbd">+/−</kbd></span></div>
+                  <div class="mm-shortcut-row"><span>fit map</span><span class="keys"><kbd class="mm-kbd">0</kbd></span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <figcaption><span class="name">shortcuts panel</span><code>.mm-panel</code></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============ feedback ============ -->
+    <section id="feedback">
+      <h2>toast &amp; marquee</h2>
+      <p class="section-note">Feedback stays quiet and always offers the keyboard way back.</p>
+      <div class="specimens">
+        <figure class="specimen">
+          <div class="stage2"><div class="mm-toast">node deleted <span style="color:var(--mm-ink-faint)">—</span> <kbd class="mm-kbd">⌘</kbd><kbd class="mm-kbd">Z</kbd> to undo</div></div>
+          <figcaption><span class="name">toast</span><code>.mm-toast</code></figcaption>
+        </figure>
+        <figure class="specimen" style="flex:1">
+          <div class="stage2">
+            <div class="mini-canvas" style="height:170px">
+              <div class="mm-marquee" style="left:36px; top:26px; width:270px; height:118px"></div>
+              <div class="mm-node is-selected is-placed" style="left:120px; top:62px; --r:-1deg">idea one</div>
+              <div class="mm-node is-selected is-placed" style="left:230px; top:118px; --r:.8deg">idea two</div>
+            </div>
+          </div>
+          <figcaption><span class="name">selection marquee</span><code>.mm-marquee</code></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============ empty ============ -->
+    <section id="empty">
+      <h2>empty canvas</h2>
+      <p class="section-note">The first thing a new user sees. No modal, no tour — the canvas itself asks the question.</p>
+      <div class="specimens">
+        <figure class="specimen wide">
+          <div class="stage2">
+            <div class="mini-canvas" style="display:grid; place-items:center; height:290px">
+              <div class="mm-empty">
+                <div class="mm-empty-title">What’s on your mind?</div>
+                <div class="mm-ghost" style="font-size:19px"><kbd class="mm-kbd mm-kbd--accent">type</kbd> your first thought…</div>
+                <div class="mm-empty-note">press Enter when done — Tab makes a child idea</div>
+              </div>
+            </div>
+          </div>
+          <figcaption><span class="name">welcome state</span><code>.mm-empty</code></figcaption>
+        </figure>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="sketch.js"></script>
+<script>
+  MMSketch.connect(document.getElementById('link-normal'), 14, 70, 286, 22);
+  MMSketch.connect(document.getElementById('link-ghost'),  14, 70, 286, 22, { ghost: true });
+  MMSketch.connect(document.getElementById('link-hot'),    14, 70, 286, 22, { hot: true });
+</script>
+</body>
+</html>

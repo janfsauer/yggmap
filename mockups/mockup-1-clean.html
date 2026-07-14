@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>mindmaps — mockup 1: clean &amp; modern</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Sans:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e1013;
+    --surface: #16191f;
+    --surface-2: #1c2028;
+    --line: rgba(255,255,255,.09);
+    --text: #eceff2;
+    --text-dim: #8b93a1;
+    --text-faint: #5a6270;
+    --accent: #d4f24f;
+    --teal: #5eead4;
+    --violet: #c4b5fd;
+    --amber: #fcd34d;
+    --rose: #fda4af;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Instrument Sans", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- canvas atmosphere ---------- */
+  .canvas {
+    position: fixed; inset: 0;
+    background-image: radial-gradient(rgba(255,255,255,.055) 1px, transparent 1.4px);
+    background-size: 26px 26px;
+  }
+  .canvas::after {
+    content: ""; position: absolute; inset: 0;
+    background:
+      radial-gradient(1100px 700px at 50% 42%, transparent 55%, rgba(0,0,0,.5)),
+      radial-gradient(900px 500px at 78% 85%, rgba(212,242,79,.045), transparent 60%);
+    pointer-events: none;
+  }
+
+  /* ---------- stage (scaled to fit) ---------- */
+  .stage {
+    position: fixed; left: 50%; top: 50%;
+    width: 1280px; height: 800px;
+    transform: translate(-50%,-50%);
+    transform-origin: center;
+  }
+  svg.links { position: absolute; inset: 0; overflow: visible; }
+  svg.links path {
+    fill: none; stroke-width: 2; stroke-linecap: round;
+    opacity: 0; animation: linkIn .6s ease forwards;
+  }
+  @keyframes linkIn { to { opacity: .55; } }
+  svg.links path.dashed { stroke-dasharray: 5 6; animation: linkInGhost .6s ease forwards; }
+  @keyframes linkInGhost { to { opacity: .4; } }
+
+  /* ---------- nodes ---------- */
+  .node {
+    position: absolute;
+    transform: translate(-50%,-50%);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 11px 18px;
+    font-size: 15px;
+    font-weight: 500;
+    white-space: nowrap;
+    box-shadow: 0 3px 14px rgba(0,0,0,.35);
+    animation: pop .45s cubic-bezier(.2,.9,.3,1.2) backwards;
+    animation-delay: calc(var(--i) * 70ms);
+  }
+  @keyframes pop {
+    from { opacity: 0; transform: translate(-50%,-42%) scale(.85); }
+  }
+  .node .dot {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    margin-right: 9px; vertical-align: 1px;
+  }
+  .node.root {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-size: 19px; font-weight: 700;
+    padding: 15px 24px;
+    background: linear-gradient(180deg, var(--surface-2), var(--surface));
+    border-color: rgba(255,255,255,.16);
+  }
+  .node.leaf { font-weight: 400; font-size: 14px; color: var(--text-dim); background: transparent; box-shadow: none; border-color: rgba(255,255,255,.07); }
+
+  /* focused node */
+  .node.focused {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent), 0 0 26px rgba(212,242,79,.18), 0 3px 14px rgba(0,0,0,.35);
+  }
+  .node.focused::before {
+    content: ""; position: absolute; inset: -7px;
+    border: 1px solid rgba(212,242,79,.35); border-radius: 14px;
+    animation: breathe 2.4s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { opacity: .9; inset: -7px; }
+    50% { opacity: .3; inset: -10px; }
+  }
+  .node.focused .hint-under {
+    position: absolute; left: 50%; top: calc(100% + 14px);
+    transform: translateX(-50%);
+    font-size: 11.5px; font-weight: 400; color: var(--text-faint);
+    white-space: nowrap; letter-spacing: .02em;
+  }
+
+  /* ghost nodes = keyboard education */
+  .node.ghost {
+    background: rgba(212,242,79,.035);
+    border: 1.5px dashed rgba(212,242,79,.45);
+    color: var(--text-dim);
+    font-weight: 400; font-size: 13.5px;
+    box-shadow: none;
+    animation: ghostIn .5s ease backwards;
+    animation-delay: calc(var(--i) * 70ms + 250ms);
+  }
+  @keyframes ghostIn { from { opacity: 0; } }
+
+  kbd {
+    font-family: "Geist Mono", monospace;
+    font-size: 11px; font-weight: 500;
+    color: var(--text);
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.16);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    padding: 2px 6px 1px;
+    margin-right: 7px;
+    vertical-align: 1px;
+  }
+  .node.ghost kbd {
+    color: var(--accent);
+    border-color: rgba(212,242,79,.4);
+    background: rgba(212,242,79,.08);
+  }
+
+  /* ---------- chrome (unscaled) ---------- */
+  .topbar {
+    position: fixed; top: 0; left: 0; right: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 24px; z-index: 10; pointer-events: none;
+  }
+  .wordmark {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-weight: 800; font-size: 20px; letter-spacing: -.02em;
+  }
+  .wordmark::after { content: "."; color: var(--accent); }
+  .saved {
+    font-size: 12px; color: var(--text-faint); letter-spacing: .03em;
+  }
+  .saved::before { content: "●"; color: var(--accent); font-size: 8px; margin-right: 7px; vertical-align: 2px; opacity: .8; }
+
+  .hintstrip {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 20px;
+    background: rgba(22,25,31,.85); backdrop-filter: blur(8px);
+    border: 1px solid var(--line); border-radius: 12px;
+    padding: 10px 20px; z-index: 10;
+    font-size: 12.5px; color: var(--text-dim);
+    animation: rise .7s .5s ease backwards;
+  }
+  @keyframes rise { from { opacity: 0; transform: translate(-50%, 12px); } }
+  .hintstrip span { white-space: nowrap; }
+  .hintstrip kbd { margin-right: 6px; }
+
+  .zoom {
+    position: fixed; bottom: 20px; left: 24px; z-index: 10;
+    display: flex; align-items: center; gap: 4px;
+    background: rgba(22,25,31,.85); border: 1px solid var(--line);
+    border-radius: 10px; padding: 6px 10px;
+    font-family: "Geist Mono", monospace; font-size: 12px; color: var(--text-dim);
+  }
+  .zoom button {
+    all: unset; cursor: pointer; padding: 0 6px; color: var(--text-dim); font-size: 14px;
+  }
+  .help {
+    position: fixed; bottom: 20px; right: 24px; z-index: 10;
+    width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(22,25,31,.85); border: 1px solid var(--line);
+    display: grid; place-items: center;
+    font-family: "Geist Mono", monospace; font-size: 14px; color: var(--text-dim);
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <div class="canvas"></div>
+
+  <div class="stage" id="stage">
+    <svg class="links" viewBox="0 0 1280 800" id="links"></svg>
+
+    <div class="node root" id="center" style="left:640px; top:400px; --i:0">Weekend Game Jam</div>
+
+    <div class="node" id="theme" data-parent="center" data-stroke="#5eead4" style="left:930px; top:235px; --i:1"><span class="dot" style="background:#5eead4"></span>Theme ideas</div>
+    <div class="node leaf" id="t1" data-parent="theme" data-stroke="#5eead4" style="left:1130px; top:178px; --i:2">time loops</div>
+    <div class="node leaf" id="t2" data-parent="theme" data-stroke="#5eead4" style="left:1142px; top:288px; --i:3">gravity flips</div>
+
+    <div class="node" id="team" data-parent="center" data-stroke="#c4b5fd" style="left:352px; top:238px; --i:4"><span class="dot" style="background:#c4b5fd"></span>Team</div>
+    <div class="node leaf" id="m1" data-parent="team" data-stroke="#c4b5fd" style="left:152px; top:182px; --i:5">Anna — art</div>
+    <div class="node leaf" id="m2" data-parent="team" data-stroke="#c4b5fd" style="left:142px; top:295px; --i:6">Piotr — code</div>
+
+    <div class="node" id="tools" data-parent="center" data-stroke="#fcd34d" style="left:355px; top:555px; --i:7"><span class="dot" style="background:#fcd34d"></span>Tools</div>
+    <div class="node leaf" id="g1" data-parent="tools" data-stroke="#fcd34d" style="left:170px; top:512px; --i:8">Godot</div>
+    <div class="node leaf" id="g2" data-parent="tools" data-stroke="#fcd34d" style="left:162px; top:615px; --i:9">Aseprite</div>
+
+    <div class="node focused" id="sched" data-parent="center" data-stroke="#fda4af" style="left:915px; top:555px; --i:10">
+      <span class="dot" style="background:#fda4af"></span>Schedule
+      <span class="hint-under">start typing to edit</span>
+    </div>
+
+    <div class="node ghost" id="ghost-child" data-parent="sched" data-stroke="#d4f24f" data-dashed style="left:1128px; top:610px; --i:11"><kbd>Tab</kbd>child</div>
+    <div class="node ghost" id="ghost-sib" data-parent="center" data-stroke="#d4f24f" data-dashed style="left:830px; top:705px; --i:12"><kbd>Enter</kbd>sibling</div>
+  </div>
+
+  <div class="topbar">
+    <div class="wordmark">mindmaps</div>
+    <div class="saved">all changes saved locally</div>
+  </div>
+
+  <div class="zoom"><button>−</button>100%<button>+</button></div>
+
+  <div class="hintstrip">
+    <span><kbd>Tab</kbd>child</span>
+    <span><kbd>Enter</kbd>sibling</span>
+    <span><kbd>⌫</kbd>delete</span>
+    <span><kbd>Space</kbd>pan</span>
+    <span><kbd>?</kbd>all shortcuts</span>
+  </div>
+
+  <div class="help">?</div>
+
+<script>
+  // scale stage to fit viewport
+  const stage = document.getElementById('stage');
+  function fit() {
+    const s = Math.min(innerWidth / 1340, (innerHeight - 120) / 820, 1);
+    stage.style.transform = `translate(-50%,-50%) scale(${s})`;
+  }
+  fit(); addEventListener('resize', fit);
+
+  // draw connectors from DOM positions
+  const svg = document.getElementById('links');
+  document.querySelectorAll('[data-parent]').forEach((el, idx) => {
+    const p = document.getElementById(el.dataset.parent);
+    const a = { x: p.offsetLeft, y: p.offsetTop, w: p.offsetWidth };
+    const b = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth };
+    const dir = b.x >= a.x ? 1 : -1;
+    const x1 = a.x + dir * (a.w / 2 + 4), y1 = a.y;
+    const x2 = b.x - dir * (b.w / 2 + 4), y2 = b.y;
+    const k = Math.max(34, Math.abs(x2 - x1) * .5) * dir;
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', `M ${x1} ${y1} C ${x1 + k} ${y1}, ${x2 - k} ${y2}, ${x2} ${y2}`);
+    path.setAttribute('stroke', el.dataset.stroke);
+    if ('dashed' in el.dataset) path.classList.add('dashed');
+    path.style.animationDelay = (idx * 70 + 150) + 'ms';
+    svg.appendChild(path);
+  });
+</script>
+</body>
+</html>

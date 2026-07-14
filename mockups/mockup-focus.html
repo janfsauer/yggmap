@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>mindmaps — focus visibility concepts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--mm-paper);
+    color: var(--mm-ink);
+    font-family: var(--mm-font-hand);
+    -webkit-font-smoothing: antialiased;
+    padding: 40px 30px 80px;
+  }
+  .grain {
+    position: fixed; inset: 0; opacity: .5; pointer-events: none; z-index: -1;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  h1 {
+    font-family: var(--mm-font-script); font-size: 42px; font-weight: 700;
+    text-align: center; transform: rotate(-.5deg);
+  }
+  .intro {
+    text-align: center; font-size: 16.5px; color: var(--mm-ink-soft);
+    max-width: 720px; margin: 6px auto 10px;
+  }
+  .controls { text-align: center; margin-bottom: 34px; }
+  .controls button {
+    all: unset; cursor: pointer;
+    font-family: var(--mm-font-hand); font-size: 16px; color: var(--mm-ink);
+    background: var(--mm-card); border: 2.2px solid var(--mm-ink);
+    border-radius: var(--mm-wobble-3);
+    box-shadow: 2px 2.5px 0 rgba(58,53,50,.16);
+    padding: 5px 18px 3px;
+  }
+  .controls button.on { background: var(--mm-yellow); }
+  .controls .note { font-family: var(--mm-font-script); font-size: 17px; color: var(--mm-ink-faint); margin-left: 14px; }
+
+  .grid {
+    display: grid; grid-template-columns: repeat(2, minmax(560px, 680px));
+    gap: 34px; justify-content: center;
+  }
+  .panel { display: flex; flex-direction: column; gap: 10px; }
+  .panel h2 {
+    font-family: var(--mm-font-script); font-size: 27px; font-weight: 700;
+    transform: rotate(-.4deg);
+  }
+  .panel h2 .tag { color: var(--mm-marker); font-size: 18px; margin-left: 10px; }
+  .panel .desc { font-size: 15px; color: var(--mm-ink-soft); min-height: 42px; }
+  .stage {
+    position: relative; height: 420px;
+    background: var(--mm-paper);
+    border: 1.8px solid rgba(58, 53, 50, .3);
+    border-radius: 16px 8px 18px 8px / 8px 18px 8px 16px;
+    overflow: hidden;
+  }
+  .stage svg { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; }
+  .stage .mm-node { cursor: pointer; }
+  .stage .mm-ghost { transition: left .25s ease, top .25s ease, opacity .2s; }
+
+  /* ============================================================
+     shared tweak in variants A/B/C: DEMOTED GHOSTS
+     hints go quiet gray; orange stays only on the keycap
+     ============================================================ */
+  .demoted .mm-ghost {
+    border-color: rgba(58, 53, 50, .30);
+    color: var(--mm-ink-faint);
+    background: transparent;
+  }
+  .demoted svg .mm-link--ghost { stroke: rgba(58, 53, 50, .35); }
+
+  /* ============================================================
+     variant A — bold & lifted
+     the node ITSELF changes: thicker ink border, scale, shadow
+     ============================================================ */
+  .vA .mm-node.is-focused {
+    --s: 1.09;
+    border-width: 3.4px;
+    box-shadow: 5px 7px 0 rgba(58, 53, 50, .24);
+  }
+  .vA .mm-node.is-focused::before { display: none; }
+
+  /* ============================================================
+     variant B — highlighter halo
+     a marker swipe behind the focused node
+     ============================================================ */
+  .vB .mm-node.is-focused { --s: 1.05; box-shadow: var(--mm-shadow-lift); }
+  .vB .mm-node.is-focused::before {
+    content: "";
+    position: absolute;
+    inset: -10px -16px;
+    border: none;
+    background: rgba(255, 138, 92, .38);
+    border-radius: 55% 45% 60% 40% / 48% 60% 40% 55%;
+    filter: blur(4px);
+    transform: rotate(-1.5deg);
+    animation: none;
+    z-index: -1;
+  }
+
+  /* ============================================================
+     variant C — spotlight
+     everything else fades; keeps the current dashed ring
+     ============================================================ */
+  .vC .mm-node:not(.is-focused) { opacity: .42; }
+  .vC .mm-ghost { opacity: .5; }
+  .vC svg.real-links { opacity: .35; }
+  .vC .mm-node, .vC svg.real-links { transition: opacity .2s ease; }
+</style>
+</head>
+<body>
+<div class="grain"></div>
+
+<h1>which node am I on?</h1>
+<p class="intro">Same map, same focus, four treatments. The focus jumps every 1.4&nbsp;s exactly like arrow-key navigation — <b>test whether your eyes can follow it without effort</b>. Click any node to compare a specific state in all four panels at once.</p>
+<div class="controls">
+  <button id="cyclebtn" class="on">⏸ pause the cycle</button>
+  <span class="note">variants A–C also demote the ghosts to quiet gray — orange belongs to the focus only</span>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<script src="../sketch.js"></script>
+<script>
+const SPEC = {
+  nodes: [
+    { id: 'root',  text: 'Game Jam',      cls: 'mm-node--root', x: 100, y: 190 },
+    { id: 'theme', text: 'Theme',         cls: 'b-blue',  x: 270, y: 80,  parent: 'root'  },
+    { id: 'tl',    text: 'time loops',    cls: 'mm-node--leaf', x: 430, y: 48,  parent: 'theme' },
+    { id: 'gf',    text: 'gravity flips', cls: 'mm-node--leaf', x: 438, y: 118, parent: 'theme' },
+    { id: 'sched', text: 'Schedule',      cls: 'b-pink',  x: 265, y: 195, parent: 'root'  },
+    { id: 'team',  text: 'Team',          cls: 'b-green', x: 262, y: 305, parent: 'root'  },
+    { id: 'anna',  text: 'Anna — art',    cls: 'mm-node--leaf', x: 425, y: 335, parent: 'team' },
+  ],
+  ghosts: {
+    root:  { child: [102, 268], sib: null },
+    theme: { child: [452, 180], sib: [277, 142] },
+    tl:    { child: [578, 48],  sib: [560, 96] },
+    gf:    { child: [592, 118], sib: [456, 154] },
+    sched: { child: [424, 196], sib: [270, 250] },
+    team:  { child: [432, 384], sib: [140, 366] },
+    anna:  { child: [588, 335], sib: [430, 378] },
+  },
+  cycle: ['theme', 'tl', 'sched', 'team'],
+};
+
+const VARIANTS = [
+  { key: 'v0', cls: '', title: 'current', tag: 'for reference',
+    desc: 'Dashed orange ring, dashed orange ghosts, dashed orange links — the selection signal is duplicated five times, and the ring blinks itself faint.' },
+  { key: 'vA', cls: 'vA demoted', title: 'A — bold & lifted', tag: 'the node itself changes',
+    desc: 'Focused node grows ~9%, border thickens to ink-heavy, shadow deepens. No ring at all. Ghosts quiet gray, orange keycaps only.' },
+  { key: 'vB', cls: 'vB demoted', title: 'B — highlighter halo', tag: 'marker swipe behind it',
+    desc: 'A soft orange marker blob behind the focused node — the only orange surface on the map. Very sketchbook. Ghosts quiet gray.' },
+  { key: 'vC', cls: 'vC demoted', title: 'C — spotlight', tag: 'dim everything else',
+    desc: 'Rest of the map fades to ~40%. Keeps the current dashed ring, but noise removal makes it readable. Strongest, but the map flickers as you move.' },
+];
+
+const parentOf = Object.fromEntries(SPEC.nodes.filter(n => n.parent).map(n => [n.id, n.parent]));
+const nodeSpec = Object.fromEntries(SPEC.nodes.map(n => [n.id, n]));
+const panels = [];
+
+for (const v of VARIANTS) {
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.innerHTML = `<h2>${v.title}<span class="tag">${v.tag}</span></h2>
+    <div class="stage ${v.cls}"></div>
+    <div class="desc">${v.desc}</div>`;
+  document.getElementById('grid').appendChild(panel);
+  const stage = panel.querySelector('.stage');
+
+  const realSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  realSvg.classList.add('real-links');
+  const ghostSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  stage.appendChild(realSvg); stage.appendChild(ghostSvg);
+
+  const els = {};
+  for (const n of SPEC.nodes) {
+    const el = document.createElement('div');
+    el.className = `mm-node is-placed ${n.cls}`;
+    el.textContent = n.text;
+    el.style.left = n.x + 'px'; el.style.top = n.y + 'px';
+    el.addEventListener('click', () => { setGlobalFocus(n.id); stopCycle(); });
+    stage.appendChild(el);
+    els[n.id] = el;
+  }
+  // ghosts (desktop flavor: keycap labels)
+  const ghostEls = {};
+  for (const kind of ['child', 'sib']) {
+    const g = document.createElement('div');
+    g.className = 'mm-ghost is-placed';
+    g.innerHTML = `<kbd class="mm-kbd mm-kbd--accent">${kind === 'child' ? 'Tab' : 'Enter'}</kbd> ${kind === 'child' ? 'child' : 'sibling'}`;
+    stage.appendChild(g);
+    ghostEls[kind] = g;
+  }
+
+  // static real links
+  for (const n of SPEC.nodes) {
+    if (!n.parent) continue;
+    const p = nodeSpec[n.parent];
+    drawLink(realSvg, p, els[p.id], n, els[n.id], false);
+  }
+
+  panels.push({ stage, els, ghostEls, ghostSvg });
+}
+
+function drawLink(svg, a, aEl, b, bEl, ghost) {
+  const aw = aEl.offsetWidth / 2, bw = bEl.offsetWidth / 2;
+  const dir = b.x >= a.x ? 1 : -1;
+  MMSketch.connect(svg, a.x + dir * (aw + 4), a.y, b.x - dir * (bw + 4), b.y,
+    { ghost, seed: Math.abs(a.x * 13 + b.y * 7) + 1 });
+}
+
+let focusId = SPEC.cycle[0];
+function setGlobalFocus(id) {
+  focusId = id;
+  for (const p of panels) {
+    for (const [nid, el] of Object.entries(p.els))
+      el.classList.toggle('is-focused', nid === id);
+    // move ghosts + redraw ghost links
+    const g = SPEC.ghosts[id];
+    p.ghostSvg.innerHTML = '';
+    const f = nodeSpec[id];
+    for (const kind of ['child', 'sib']) {
+      const el = p.ghostEls[kind];
+      const spot = g && g[kind];
+      el.style.opacity = spot ? '' : '0';
+      if (!spot) continue;
+      el.style.left = spot[0] + 'px'; el.style.top = spot[1] + 'px';
+      const from = kind === 'child' ? f : nodeSpec[parentOf[id]];
+      drawLink(p.ghostSvg, from, p.els[from.id], { x: spot[0], y: spot[1] }, el, true);
+    }
+  }
+}
+
+let timer = null, step = 0;
+function tick() { step = (step + 1) % SPEC.cycle.length; setGlobalFocus(SPEC.cycle[step]); }
+function startCycle() {
+  if (timer) return;
+  timer = setInterval(tick, 1400);
+  const b = document.getElementById('cyclebtn');
+  b.classList.add('on'); b.textContent = '⏸ pause the cycle';
+}
+function stopCycle() {
+  clearInterval(timer); timer = null;
+  const b = document.getElementById('cyclebtn');
+  b.classList.remove('on'); b.textContent = '▶ resume the cycle';
+}
+document.getElementById('cyclebtn').addEventListener('click', () => timer ? stopCycle() : startCycle());
+
+setGlobalFocus(focusId);
+startCycle();
+</script>
+</body>
+</html>
