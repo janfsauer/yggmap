@@ -158,10 +158,12 @@
   cursor: text;
 }
 
-/* placeholder while the edited node is still empty (data-ph set by the app;
-   the :has(br) case covers browsers that pad empty contenteditables) */
+/* placeholder while a node is empty: during editing, and on the root even
+   when a stray click blurred the editor before any text was typed
+   (the :has(br) case covers browsers that pad empty contenteditables) */
 .mm-node.is-editing:empty::before,
-.mm-node.is-editing:has(> br:only-child)::before {
+.mm-node.is-editing:has(> br:only-child)::before,
+.mm-node--root:empty::before {
   content: attr(data-ph);
   color: var(--mm-ink-faint);
   opacity: .75;

@@ -21,7 +21,6 @@ const GHOST_CHILD = 'ghost:child', GHOST_SIB = 'ghost:sibling';
 /* ---------------- state ---------------- */
 
 let mapIndex, currentMapId;
-let bootEditRoot = false; // first visit: put the caret straight into the central idea
 let doc = initStorage();
 let ui = Object.assign(
   { learn: { tab: 0, enter: 0 }, forceMobile: false, debug: false, view: null },
@@ -48,6 +47,11 @@ function loadJSON(k) {
 }
 
 function freshDoc() { return { v: DOC_VERSION, seq: 1, root: { id: 'n0', text: '', children: [] } }; }
+
+/* untouched map: the first-visit look (placeholder, hint, no ghosts)
+   must hold until the central idea gets real text — even after a stray
+   click blurs the editor */
+function isPristine() { return !doc.root.text && !doc.root.children.length; }
 
 /* every doc passes through here on load — pre-version docs get stamped;
    a future format bump hooks its migration ladder in right here */
@@ -85,7 +89,6 @@ function initStorage() {
     // then start with an empty map, no questions asked
     const legacy = loadJSON(LEGACY_DOC_KEY);
     const first = legacy || freshDoc();
-    if (!legacy) bootEditRoot = true;
     const id = genMapId();
     localStorage.setItem(mapKey(id), JSON.stringify(first));
     mapIndex = [{ id, title: titleOf(first), updated: Date.now() }];
@@ -219,7 +222,7 @@ function learnLevel(key) {
 }
 
 function ghostSpecs() {
-  if (editingId || !focusId) return [];
+  if (editingId || !focusId || isPristine()) return [];
   const focus = nodeMap.get(focusId);
   if (!focus) return [];
   const mobile = isMobile();
@@ -300,8 +303,13 @@ function renderShadow(shadow) {
       if (sh.id !== editingId) {
         const badge = node.collapsed && node.children.length
           ? `<span class="mm-badge">+${countDescendants(node)}</span>` : '';
-        const html = escapeHTML(node.text || ' ') + badge;
-        if (el.dataset.label !== html) { el.innerHTML = html; el.dataset.label = html; }
+        // an empty root stays truly :empty so the CSS placeholder shows
+        const emptyRoot = depth === 0 && !node.text;
+        if (emptyRoot) el.dataset.ph = 'your central idea';
+        const html = (emptyRoot ? '' : escapeHTML(node.text || ' ')) + badge;
+        // '∅' keeps "render nothing" distinct from the cleared cache key
+        const key = html || '∅';
+        if (el.dataset.label !== key) { el.innerHTML = html; el.dataset.label = key; }
       }
     }
     sh.children.forEach(walk);
@@ -452,7 +460,8 @@ function renderChrome() {
   const mobile = isMobile();
   document.body.classList.toggle('mobile', mobile);
   document.body.classList.toggle('desktop', !mobile);
-  document.body.classList.toggle('firstvisit', bootEditRoot && editingId === doc.root.id);
+  document.body.classList.toggle('firstvisit', isPristine());
+  $('#firsthint').textContent = editingId ? 'press Enter when done' : 'just start typing';
   document.body.classList.toggle('can-toggle-mobile', ui.debug && !matchMedia('(pointer: coarse)').matches);
   $('#mobiletoggle').textContent = ui.forceMobile ? '⌨️ back to desktop' : '📱 mobile preview';
   $('#zoom-val').textContent = Math.round(view.s * 100) + '%';
@@ -649,7 +658,6 @@ function commitEdit(cancel) {
     node.text = text;
   }
   editingWasNew = false; editingSnapshot = null;
-  bootEditRoot = false; // first-visit hint retires after the first commit
   refresh();
   ensureVisible(focusId); // ghosts reappear on commit — bring them on screen
 }
@@ -1016,7 +1024,7 @@ reindex(); indexDirty = false;
 applyView();
 refresh();
 if (!ui.view) fitMap();
-if (bootEditRoot) startEdit(doc.root);
+if (isPristine()) startEdit(doc.root); // untouched map boots straight into the caret
 document.fonts.ready.then(() => {
   refresh();
   if (!loadJSON(UI_KEY)) fitMap(); // first run: fit after real fonts settle
