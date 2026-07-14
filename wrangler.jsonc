@@ -1,0 +1,15 @@
+// Cloudflare Workers static-assets config. Deploy with: npx wrangler deploy
+// One-time setup on a new machine: npx wrangler login
+{
+  "name": "yggmap",
+  "compatibility_date": "2026-07-14",
+  "assets": {
+    "directory": "."
+  }
+  // Enable once yggmap.com is registered in this Cloudflare account,
+  // then redeploy:
+  // ,"routes": [
+  //   { "pattern": "yggmap.com", "custom_domain": true },
+  //   { "pattern": "www.yggmap.com", "custom_domain": true }
+  // ]
+}

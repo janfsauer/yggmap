@@ -1,0 +1,11 @@
+# Files never uploaded to the live site (wrangler static assets)
+.git
+.gitignore
+.playwright-mcp
+.assetsignore
+wrangler.jsonc
+CLAUDE.md
+README.md
+mockups
+assets/src
+node_modules
