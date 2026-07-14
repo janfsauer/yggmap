@@ -23,8 +23,9 @@ let mapIndex, currentMapId;
 let bootEditRoot = false; // first visit: put the caret straight into the central idea
 let doc = initStorage();
 let ui = Object.assign(
-  { learn: { tab: 0, enter: 0 }, createMode: 'ghosts', forceMobile: false, debug: false, view: null },
+  { learn: { tab: 0, enter: 0 }, forceMobile: false, debug: false, view: null },
   loadJSON(UI_KEY) || {});
+delete ui.createMode; // retired A/B experiment (ghosts won over the bar)
 
 let focusId = doc.root.id;
 let editingId = null;
@@ -209,7 +210,6 @@ function ghostSpecs() {
   const focus = nodeMap.get(focusId);
   if (!focus) return [];
   const mobile = isMobile();
-  if (mobile && ui.createMode !== 'ghosts') return [];
   const specs = [];
   const tabLvl = mobile ? 0 : learnLevel('tab');
   const entLvl = mobile ? 0 : learnLevel('enter');
@@ -443,8 +443,6 @@ function renderChrome() {
   document.body.classList.toggle('can-toggle-mobile', ui.debug && !matchMedia('(pointer: coarse)').matches);
   $('#mobiletoggle').textContent = ui.forceMobile ? '⌨️ back to desktop' : '📱 mobile preview';
   $('#zoom-val').textContent = Math.round(view.s * 100) + '%';
-  $('#mode-ghosts').classList.toggle('on', ui.createMode === 'ghosts');
-  $('#mode-bar').classList.toggle('on', ui.createMode === 'bar');
 
   // desktop hint strip (contextual)
   const strip = $('#hintstrip');
@@ -467,11 +465,6 @@ function renderChrome() {
     ];
   } else if (focusId) {
     const focus = nodeMap.get(focusId);
-    if (ui.createMode === 'bar') {
-      actions.push(['＋', 'child', () => createChild(focus), 'accent']);
-      if (focusId !== doc.root.id)
-        actions.push(['＋', 'sibling', () => createSibling(focus), 'accent']);
-    }
     actions.push(['✎', 'edit', () => startEdit(focus)]);
     actions.push([colorDots(), 'color', () => cycleColor(focus)]);
     if (focus && focus.children.length)
@@ -999,8 +992,6 @@ $('#zoom-in').addEventListener('click', () => zoomAt(innerWidth / 2, innerHeight
 $('#zoom-out').addEventListener('click', () => zoomAt(innerWidth / 2, innerHeight / 2, 1 / 1.2));
 
 $('#mobiletoggle').addEventListener('click', () => { ui.forceMobile = !ui.forceMobile; refresh(); });
-$('#mode-ghosts').addEventListener('click', () => { ui.createMode = 'ghosts'; refresh(); });
-$('#mode-bar').addEventListener('click', () => { ui.createMode = 'bar'; refresh(); });
 
 /* ---------------- boot ---------------- */
 

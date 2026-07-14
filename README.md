@@ -1,9 +1,12 @@
-# mindmaps
+# yggmap
 
 A free, fully private, one-page mind-mapping web app. No accounts, no server, no
 tracking — everything lives in your browser's local storage. Inspired by the
 [Excalidraw](https://excalidraw.com/) philosophy: the canvas *is* the app, zero
 onboarding, keyboard-first.
+
+Named after **Yggdrasil**, the Norse world-tree whose branches connect the nine
+realms — the way a map's branches connect your ideas.
 
 ## Using it
 
@@ -20,8 +23,8 @@ the full shortcut list.
 Multiple maps are managed via **☰ my maps** (stored per-browser; use
 export/import to move them between devices — there is no sync).
 
-On touch devices the ghosts become tappable buttons and a contextual action
-bar appears (two create variants are still being A/B-tested).
+On touch devices the ghosts become tappable create buttons and a contextual
+action bar carries the remaining actions (edit, color, collapse, delete).
 
 ## Development
 

@@ -53,27 +53,9 @@
   }
   body.mobile #actionbar.has-actions { display: inline-flex; }
 
-  #modepill {
-    display: none;
-    position: fixed; top: calc(16px + env(safe-area-inset-top)); left: 50%;
-    transform: translateX(-50%) rotate(-.5deg); z-index: 12;
-    align-items: center; gap: 2px;
-    background: var(--mm-card); border: 2px solid var(--mm-ink);
-    border-radius: var(--mm-wobble-3);
-    box-shadow: 2px 2.5px 0 rgba(58,53,50,.16);
-    padding: 3px 5px; font-size: 14.5px;
-  }
-  body.mobile #modepill { display: inline-flex; }
   body.mobile .mm-saved { display: none; }
   body.mobile .mm-wordmark { font-size: 24px; }
-  body.mobile #modepill { left: auto; right: 14px; transform: rotate(-.5deg); }
   body.mobile #zoomctl { display: none; }
-  #modepill span { color: var(--mm-ink-faint); padding: 0 4px; }
-  #modepill button {
-    all: unset; cursor: pointer; padding: 1px 9px 0;
-    border-radius: var(--mm-wobble-3); color: var(--mm-ink-soft);
-  }
-  #modepill button.on { background: var(--mm-yellow); color: var(--mm-ink); }
 
   #mobiletoggle {
     position: fixed; bottom: calc(20px + env(safe-area-inset-bottom)); right: 74px; z-index: 10;
@@ -170,13 +152,7 @@
     </div>
   </div>
 
-  <div id="modepill">
-    <span>create via</span>
-    <button id="mode-ghosts">ghosts</button>
-    <button id="mode-bar">bar</button>
-  </div>
-
-  <div class="mm-zoom" id="zoomctl"><button id="zoom-out">−</button><span id="zoom-val">100%</span><button id="zoom-in">+</button></div>
+<div class="mm-zoom" id="zoomctl"><button id="zoom-out">−</button><span id="zoom-val">100%</span><button id="zoom-in">+</button></div>
 
   <div class="mm-hintstrip mm-hintstrip--fixed" id="hintstrip"></div>
   <div class="mm-actionbar" id="actionbar"></div>
