@@ -5,11 +5,9 @@
   "compatibility_date": "2026-07-14",
   "assets": {
     "directory": "."
-  }
-  // Enable once yggmap.com is registered in this Cloudflare account,
-  // then redeploy:
-  // ,"routes": [
-  //   { "pattern": "yggmap.com", "custom_domain": true },
-  //   { "pattern": "www.yggmap.com", "custom_domain": true }
-  // ]
+  },
+  "routes": [
+    { "pattern": "yggmap.com", "custom_domain": true },
+    { "pattern": "www.yggmap.com", "custom_domain": true }
+  ]
 }
