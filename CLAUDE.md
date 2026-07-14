@@ -4,16 +4,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-**yggmap** (working name; storage keys deliberately keep the older `mindmaps.` prefix — renaming them would orphan users' data): a free, fully private, one-page mind-mapping web app in the Excalidraw spirit — canvas-is-the-app, local-first, keyboard-first, zero onboarding.
+**yggmap** (live at https://yggmap.com; storage keys deliberately keep the older `mindmaps.` prefix — renaming them would orphan users' data): a free, fully private, one-page mind-mapping web app in the Excalidraw spirit — canvas-is-the-app, local-first, keyboard-first, zero onboarding.
 
 ## Commands
 
-There is **no build system, linter, or test suite — on purpose**. Plain HTML/CSS/JS; deploying = copying files to a static host. Keep it that way unless the user decides otherwise.
+There is **no build system, linter, or test suite — on purpose**. Plain HTML/CSS/JS. Keep it that way unless the user decides otherwise.
 
 ```sh
 python3 -m http.server 8471     # serve for development; file:// won't work (localStorage)
 # → http://localhost:8471/index.html
+
+npx wrangler deploy             # deploy to production (yggmap.com, Cloudflare Workers
+                                # static assets; one-time auth: npx wrangler login)
 ```
+
+Deployment serves the repo root as-is; `.assetsignore` lists what never ships
+(mockups, `assets/src` logo sources, docs) — extend it when adding dev-only
+files. Deploying is a production action: **only deploy when the user asks.**
 
 Verification is done by driving the real app in a browser (Playwright MCP). Practical notes:
 - Bust caching by appending `?v=<anything>` to the URL after editing files.
