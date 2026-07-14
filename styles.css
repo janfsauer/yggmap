@@ -336,6 +336,12 @@
   display: inline-block;
 }
 .mm-wordmark::after { content: "."; color: var(--mm-marker); }
+.mm-wordmark .mark {
+  height: 30px;
+  width: auto;
+  vertical-align: -6px;
+  margin-right: 7px;
+}
 
 .mm-saved {
   font-family: var(--mm-font-script);
