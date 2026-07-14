@@ -158,6 +158,15 @@
   cursor: text;
 }
 
+/* placeholder while the edited node is still empty (data-ph set by the app;
+   the :has(br) case covers browsers that pad empty contenteditables) */
+.mm-node.is-editing:empty::before,
+.mm-node.is-editing:has(> br:only-child)::before {
+  content: attr(data-ph);
+  color: var(--mm-ink-faint);
+  opacity: .75;
+}
+
 /* dragging */
 .mm-node.is-dragging {
   --s: 1.05;

@@ -588,6 +588,7 @@ function startEdit(node, replaceWith, isNew = false) {
   refresh();
   const el = nodeEls.get(node.id);
   el.contentEditable = 'plaintext-only' in document.body ? 'plaintext-only' : 'true';
+  el.dataset.ph = node.id === doc.root.id ? 'your central idea' : 'new idea';
   el.textContent = replaceWith !== undefined ? replaceWith : node.text;
   el.focus();
   const range = document.createRange();
