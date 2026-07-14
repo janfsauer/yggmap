@@ -51,6 +51,7 @@ the touch UI on desktop. The flag persists in `localStorage`.
 | `styles.css` | The living design system — all `.mm-*` components and tokens |
 | `book.html` | Component book: renders every piece of `styles.css` with notes |
 | `mockups/` | Design-exploration history (early style, mobile, focus studies) |
+| `assets/` | Brand: web-ready WebP logo + wordmark, apple-touch-icon; `src/` full-res PNG originals |
 
 `styles.css` is shared by the app, the component book, and some mockups —
 change a component there and every consumer updates. Keep `book.html` in sync
@@ -62,7 +63,7 @@ when adding components.
 | --- | --- |
 | `mindmaps.index.v1` | `[{id, title, updated}]` map list |
 | `mindmaps.current.v1` | id of the open map |
-| `mindmaps.map.<id>` | one map document (JSON tree) |
+| `mindmaps.map.<id>` | one map document (JSON tree, format-versioned via its `v` field) |
 | `mindmaps.ui.v2` | view transform, learn counters, create mode, debug flag |
 | `mindmaps.doc.v1` | legacy single-map key, kept as a migration backup |
 

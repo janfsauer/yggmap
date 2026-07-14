@@ -9,6 +9,7 @@ const $ = s => document.querySelector(s);
 const viewportEl = $('#viewport'), worldEl = $('#world'),
       linksEl = $('#links'), nodesEl = $('#nodes');
 
+const DOC_VERSION = 1; // bump on breaking doc-shape changes; migrate lazily on load
 const UI_KEY = 'mindmaps.ui.v2';
 const INDEX_KEY = 'mindmaps.index.v1', CURRENT_KEY = 'mindmaps.current.v1';
 const LEGACY_DOC_KEY = 'mindmaps.doc.v1';
@@ -46,7 +47,14 @@ function loadJSON(k) {
   catch { return null; }
 }
 
-function freshDoc() { return { seq: 1, root: { id: 'n0', text: '', children: [] } }; }
+function freshDoc() { return { v: DOC_VERSION, seq: 1, root: { id: 'n0', text: '', children: [] } }; }
+
+/* every doc passes through here on load — pre-version docs get stamped;
+   a future format bump hooks its migration ladder in right here */
+function hydrateDoc(d) {
+  if (!d.v) d.v = DOC_VERSION;
+  return d;
+}
 
 /* top-level branches keep a persistent side so inserting nodes
    never reshuffles the map; new branches go to the lighter side */
@@ -86,7 +94,7 @@ function initStorage() {
   }
   currentMapId = localStorage.getItem(CURRENT_KEY);
   if (!mapIndex.some(m => m.id === currentMapId)) currentMapId = mapIndex[0].id;
-  return loadJSON(mapKey(currentMapId)) || freshDoc();
+  return hydrateDoc(loadJSON(mapKey(currentMapId)) || freshDoc());
 }
 
 function titleOf(d) { return (d.root.text || '').trim() || 'untitled'; }
@@ -108,7 +116,7 @@ function switchMap(id) {
   saveDoc();
   currentMapId = id;
   localStorage.setItem(CURRENT_KEY, id);
-  doc = loadJSON(mapKey(id)) || freshDoc();
+  doc = hydrateDoc(loadJSON(mapKey(id)) || freshDoc());
   migrateSides();
   undoStack = []; redoStack = [];
   markDirty(); reindexIfNeeded();
@@ -141,7 +149,7 @@ function deleteMap(id) {
 
 function exportAll() {
   const payload = {
-    app: 'mindmaps', version: 1, exported: new Date().toISOString(),
+    app: 'mindmaps', version: DOC_VERSION, exported: new Date().toISOString(),
     maps: mapIndex.map(m => ({ title: m.title, updated: m.updated, doc: loadJSON(mapKey(m.id)) })),
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -155,11 +163,16 @@ function exportAll() {
 function importFile(file) {
   file.text().then(txt => {
     const data = JSON.parse(txt);
+    // fail fast on files we don't understand instead of breaking at render
+    if ((data.version || 0) > DOC_VERSION) {
+      toast('this file was exported by a newer version of the app');
+      return;
+    }
     let n = 0;
     for (const m of (data.maps || [])) {
       if (!m.doc || !m.doc.root) continue;
       const id = genMapId();
-      localStorage.setItem(mapKey(id), JSON.stringify(m.doc));
+      localStorage.setItem(mapKey(id), JSON.stringify(hydrateDoc(m.doc)));
       mapIndex.unshift({ id, title: m.title || titleOf(m.doc), updated: Date.now() });
       n++;
     }
