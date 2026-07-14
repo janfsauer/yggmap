@@ -570,9 +570,12 @@ function toggleCollapse(node) {
 
 /* ---------------- editing ---------------- */
 
+let editStartAt = 0;
+
 function startEdit(node, replaceWith, isNew = false) {
   if (!node || editingId) return;
   editingId = node.id;
+  editStartAt = performance.now();
   editingWasNew = isNew;
   editingSnapshot = isNew ? null : snapshot();
   focusId = node.id;
@@ -602,7 +605,18 @@ function onEditKeydown(e) {
   }
 }
 
-function onEditBlur() { if (editingId) commitEdit(false); }
+function onEditBlur() {
+  if (!editingId) return;
+  // a blur this soon after opening can't be the user leaving the editor —
+  // it's the tap that created the node still settling (mobile keyboards,
+  // synthesized events). Refocus instead of committing the empty node away.
+  if (performance.now() - editStartAt < 400) {
+    const el = nodeEls.get(editingId);
+    requestAnimationFrame(() => { if (editingId && el) el.focus(); });
+    return;
+  }
+  commitEdit(false);
+}
 
 function commitEdit(cancel) {
   const id = editingId;
@@ -630,6 +644,7 @@ function commitEdit(cancel) {
   editingWasNew = false; editingSnapshot = null;
   bootEditRoot = false; // first-visit hint retires after the first commit
   refresh();
+  ensureVisible(focusId); // ghosts reappear on commit — bring them on screen
 }
 
 function removeQuiet(node) {
@@ -662,20 +677,42 @@ function glideTo(vx, vy, dur = 220) {
 }
 
 /* pan the minimum distance that puts the node (plus breathing room)
-   inside the visible area — clear of chrome and the mobile keyboard */
+   inside the visible area — clear of chrome and the mobile keyboard.
+   The focused node's ghosts come along when they fit: on mobile they are
+   the create buttons, so an off-screen ghost is an unusable feature. */
 function ensureVisible(id) {
   const p = lastPos.get(id);
   if (!p) return;
-  const sx = p.x * view.s + view.x, sy = p.y * view.s + view.y;
-  const hw = (p.w / 2 + 24) * view.s, hh = (p.h / 2 + 24) * view.s;
+  const screenRect = q => ({
+    l: (q.x - q.w / 2 - 24) * view.s + view.x,
+    r: (q.x + q.w / 2 + 24) * view.s + view.x,
+    t: (q.y - q.h / 2 - 24) * view.s + view.y,
+    b: (q.y + q.h / 2 + 24) * view.s + view.y,
+  });
+  const node = screenRect(p);
+  let u = { ...node };
+  if (id === focusId) {
+    for (const gid of [GHOST_CHILD, GHOST_SIB]) {
+      const g = lastPos.get(gid);
+      if (!g) continue;
+      const r = screenRect(g);
+      u = { l: Math.min(u.l, r.l), r: Math.max(u.r, r.r),
+            t: Math.min(u.t, r.t), b: Math.max(u.b, r.b) };
+    }
+  }
   const W = innerWidth;
   const H = window.visualViewport ? visualViewport.height : innerHeight;
   const mL = 40, mR = 40, mT = 80, mB = 130;
-  let dx = 0, dy = 0;
-  if (sx - hw < mL) dx = mL - (sx - hw);
-  else if (sx + hw > W - mR) dx = (W - mR) - (sx + hw);
-  if (sy - hh < mT) dy = mT - (sy - hh);
-  else if (sy + hh > H - mB) dy = (H - mB) - (sy + hh);
+  // per axis: fit the node+ghost union; if it simply can't fit
+  // (e.g. sibling ghost below a tall subtree), the node itself wins
+  const fit = (lo, hi, nlo, nhi, mLo, mHi, span) => {
+    if (hi - lo > span - mLo - mHi) { lo = nlo; hi = nhi; }
+    if (lo < mLo) return mLo - lo;
+    if (hi > span - mHi) return (span - mHi) - hi;
+    return 0;
+  };
+  const dx = fit(u.l, u.r, node.l, node.r, mL, mR, W);
+  const dy = fit(u.t, u.b, node.t, node.b, mT, mB, H);
   if (dx || dy) glideTo(view.x + dx, view.y + dy);
 }
 
@@ -771,6 +808,10 @@ let pinchStart = null, panStart = null, downInfo = null;
 viewportEl.addEventListener('pointerdown', e => {
   cancelGlide(); // never fight a user gesture
   const onNode = e.target.closest('.mm-node, .mm-ghost');
+  // suppress the browser's synthesized mouse/focus pass for this tap:
+  // on iOS it fires AFTER pointerup and would blur the editor a ghost tap
+  // just opened, committing (and deleting) the empty new node
+  if (onNode && onNode.dataset.id !== editingId) e.preventDefault();
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   downInfo = { x: e.clientX, y: e.clientY, target: onNode, moved: false };
   if (pointers.size === 2) {
