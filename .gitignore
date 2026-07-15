@@ -1,2 +1,6 @@
 .DS_Store
 .playwright-mcp/
+.wrangler/
+node_modules/
+test-results/
+playwright-report/

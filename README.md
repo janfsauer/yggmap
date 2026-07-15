@@ -37,6 +37,14 @@ python3 -m http.server 8471
 # → http://localhost:8471/index.html
 ```
 
+**Tests**: a headless [Playwright](https://playwright.dev/) suite drives the
+real app in a real browser — the only npm tooling in the repo, dev-only:
+
+```sh
+npm install && npx playwright install chromium   # once
+npm test
+```
+
 **Debug mode**: press `⌘⇧D` (or `Ctrl+Shift+D`) in the app to toggle it. It
 currently reveals the *📱 mobile preview* button (bottom-right) which forces
 the touch UI on desktop. The flag persists in `localStorage`.
@@ -50,6 +58,7 @@ the touch UI on desktop. The flag persists in `localStorage`.
 | `sketch.js` | `MMSketch` — seeded hand-drawn SVG connectors (jittered beziers) |
 | `styles.css` | The living design system — all `.mm-*` components and tokens |
 | `book.html` | Component book: renders every piece of `styles.css` with notes |
+| `tests/` | Headless Playwright suite (`npm test`) — asserts behavior against the real app |
 | `mockups/` | Design-exploration history (early style, mobile, focus studies) |
 | `assets/` | Brand: web-ready WebP logo + wordmark, apple-touch-icon; `src/` full-res PNG originals |
 

@@ -1,9 +1,17 @@
 # Files never uploaded to the live site (wrangler static assets)
 .git
+.github
 .gitignore
 .playwright-mcp
 .assetsignore
+.wrangler
 wrangler.jsonc
+package.json
+package-lock.json
+playwright.config.js
+tests
+test-results
+playwright-report
 CLAUDE.md
 README.md
 mockups

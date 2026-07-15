@@ -8,23 +8,39 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-There is **no build system, linter, or test suite — on purpose**. Plain HTML/CSS/JS. Keep it that way unless the user decides otherwise.
+There is **no build system or linter — on purpose**. Plain HTML/CSS/JS; the
+`package.json` npm tooling exists only for the test suite and never ships.
 
 ```sh
 python3 -m http.server 8471     # serve for development; file:// won't work (localStorage)
 # → http://localhost:8471/index.html
+
+npm test                        # headless Playwright suite in tests/ (one-time
+                                # setup: npm install && npx playwright install chromium)
 
 npx wrangler deploy             # deploy to production (yggmap.com, Cloudflare Workers
                                 # static assets; one-time auth: npx wrangler login)
 ```
 
 Deployment serves the repo root as-is; `.assetsignore` lists what never ships
-(mockups, `assets/src` logo sources, docs) — extend it when adding dev-only
-files. Deploying is a production action: **only deploy when the user asks.**
+(mockups, `assets/src` logo sources, docs, test tooling) — extend it when
+adding dev-only files. Deploying is a production action: **only deploy when
+the user asks.**
 
-Verification is done by driving the real app in a browser (Playwright MCP). Practical notes:
+### Tests (`tests/`)
+
+`npm test` drives the real app headless via `@playwright/test` (config in
+`playwright.config.js`; it starts the http server itself, or reuses one already
+running on 8471). Fixture maps are planted straight into `localStorage` by
+`tests/helpers.js#seedMap` before page scripts run — the seed is idempotent
+across reloads so persistence tests can assert the app's own saves. Each test
+gets a fresh browser context, so storage starts clean for free. **A bug fix or
+behavior change should come with a test here** (red/green when practical).
+CI runs the suite on every push and PR (`.github/workflows/tests.yml`).
+
+Exploratory verification still happens by hand in a browser (Playwright MCP). Practical notes for both:
 - Bust caching by appending `?v=<anything>` to the URL after editing files.
-- `window.__mm()` returns `{focusId, editingId, rootId}` for assertions.
+- `window.__mm()` returns `{focusId, editingId, rootId, currentMapId, undoDepth}` for assertions.
 - Glide/pan animations use `requestAnimationFrame`; in a **background** tab they crawl due to rAF throttling — a test artifact, not a bug. Time-based easing still converges.
 - A live page re-saves state on unload (blur → commit → save), so wiping `localStorage` must happen before navigation, not on the page under test.
 - In-app **debug mode**: `⌘⇧D`/`Ctrl+Shift+D`, persisted in the UI storage key. Currently reveals the 📱 mobile-preview button that forces the touch UI on desktop.

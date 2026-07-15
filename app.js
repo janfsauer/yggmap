@@ -1205,7 +1205,7 @@ $('#mobiletoggle').addEventListener('click', () => { ui.forceMobile = !ui.forceM
 
 /* ---------------- boot ---------------- */
 
-window.__mm = () => ({ focusId, editingId, rootId: doc.root.id });
+window.__mm = () => ({ focusId, editingId, rootId: doc.root.id, currentMapId, undoDepth: undoStack.length });
 
 migrateSides();
 reindex(); indexDirty = false;

@@ -1,0 +1,12 @@
+{
+  "name": "yggmap-tests",
+  "private": true,
+  "description": "Dev-only test harness for yggmap. The app itself has no build step; none of this ships.",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.0"
+  }
+}
