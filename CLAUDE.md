@@ -75,6 +75,7 @@ Key ideas that span multiple functions:
 - **Editing is in-place contenteditable.** Commit paths: Enter/Esc/Tab in `onEditKeydown`, blur in `onEditBlur`, and `setFocus` commits before moving. An empty *new* node is removed on commit (`removeQuiet`).
 - **Undo/redo = whole-doc JSON snapshots** (`pushUndo`, max 100). Any new mutation must call `pushUndo()` first and `refresh()` after.
 - **Persistence**: per-map docs under `mindmaps.map.<id>`, plus index/current/ui keys (schema table in README). Docs carry a `v` field (`DOC_VERSION`); **every doc load goes through `hydrateDoc()`** — that is where a future migration ladder hooks in. Import fails fast on payloads with a newer version. `saveDoc()` refuses to write when the map was just deleted (don't resurrect).
+- **Multi-tab safety & sync**: the index is shared mutable state across tabs — every index mutation calls `reloadIndex()` first (read-modify-write, never write a stale copy), and `saveDoc()` skips no-op writes (`lastSavedDoc`) so an idle tab can't overwrite fresh data with stale. A `storage` listener adopts remote changes live: index changes re-render the drawer / switch away from a remotely-deleted map; writes to the open map are adopted via `adoptRemoteDoc()`. Conflict policy is **last-writer-wins on whole docs**; a remote write arriving mid-edit is parked and adopted only if the commit changed nothing. Tests in `tests/multitab.spec.js` (two pages, one context).
 
 ### Hard-won invariants (do not "simplify" away)
 

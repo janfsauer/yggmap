@@ -21,6 +21,10 @@ const GHOST_CHILD = 'ghost:child', GHOST_SIB = 'ghost:sibling';
 /* ---------------- state ---------------- */
 
 let mapIndex, currentMapId;
+let lastSavedDoc = null; // raw JSON last read from / written to storage for the
+                         // current map — lets saveDoc() skip no-op writes, so a
+                         // tab that changed nothing can never overwrite another
+                         // tab's fresh data with its own stale copy
 let doc = initStorage();
 let ui = Object.assign(
   { learn: { tab: 0, enter: 0 }, forceMobile: false, debug: false, view: null },
@@ -96,6 +100,7 @@ function initStorage() {
   }
   currentMapId = localStorage.getItem(CURRENT_KEY);
   if (!mapIndex.some(m => m.id === currentMapId)) currentMapId = mapIndex[0].id;
+  lastSavedDoc = localStorage.getItem(mapKey(currentMapId));
   return hydrateDoc(loadJSON(mapKey(currentMapId)) || freshDoc());
 }
 
@@ -103,10 +108,18 @@ function titleOf(d) { return (d.root.text || '').trim() || 'untitled'; }
 function genMapId() { return 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 function saveIndex() { localStorage.setItem(INDEX_KEY, JSON.stringify(mapIndex)); }
 
+/* the index is shared by every open tab — re-read it before mutating so we
+   never clobber a map another tab just added, renamed or deleted */
+function reloadIndex() { mapIndex = loadJSON(INDEX_KEY) || mapIndex || []; }
+
 function saveDoc() {
+  const json = JSON.stringify(doc);
+  if (json === lastSavedDoc) return; // no-op refresh — nothing to write, nothing to clobber
+  reloadIndex();
   const entry = mapIndex.find(m => m.id === currentMapId);
-  if (!entry) return; // current map was just deleted; don't resurrect it
-  localStorage.setItem(mapKey(currentMapId), JSON.stringify(doc));
+  if (!entry) return; // current map was just deleted (possibly in another tab); don't resurrect it
+  localStorage.setItem(mapKey(currentMapId), json);
+  lastSavedDoc = json;
   entry.title = titleOf(doc);
   entry.updated = Date.now();
   saveIndex();
@@ -118,6 +131,7 @@ function switchMap(id) {
   saveDoc();
   currentMapId = id;
   localStorage.setItem(CURRENT_KEY, id);
+  lastSavedDoc = localStorage.getItem(mapKey(id));
   doc = hydrateDoc(loadJSON(mapKey(id)) || freshDoc());
   migrateSides();
   undoStack = []; redoStack = [];
@@ -131,6 +145,7 @@ function newMap() {
   if (editingId) commitEdit(false);
   const id = genMapId();
   localStorage.setItem(mapKey(id), JSON.stringify(freshDoc()));
+  reloadIndex();
   mapIndex.unshift({ id, title: 'untitled', updated: Date.now() });
   saveIndex();
   switchMap(id);
@@ -140,6 +155,7 @@ function newMap() {
 
 function deleteMap(id) {
   localStorage.removeItem(mapKey(id));
+  reloadIndex();
   mapIndex = mapIndex.filter(m => m.id !== id);
   saveIndex();
   if (id === currentMapId) {
@@ -150,6 +166,7 @@ function deleteMap(id) {
 }
 
 function exportAll() {
+  reloadIndex(); // include maps other tabs created since we loaded
   const payload = {
     app: 'mindmaps', version: DOC_VERSION, exported: new Date().toISOString(),
     maps: mapIndex.map(m => ({ title: m.title, updated: m.updated, doc: loadJSON(mapKey(m.id)) })),
@@ -171,6 +188,7 @@ function importFile(file) {
       return;
     }
     let n = 0;
+    reloadIndex();
     for (const m of (data.maps || [])) {
       if (!m.doc || !m.doc.root) continue;
       const id = genMapId();
@@ -646,6 +664,7 @@ function commitEdit(cancel) {
   editingId = null;
   el.dataset.label = ''; // force re-render of content
 
+  let changed = false;
   if (cancel) {
     if (editingWasNew) { removeQuiet(node); }
     else if (editingSnapshot) { /* text untouched in doc — nothing to restore */ }
@@ -655,8 +674,15 @@ function commitEdit(cancel) {
   } else if (text !== node.text) {
     if (!editingWasNew && editingSnapshot) pushUndo(editingSnapshot);
     node.text = text;
+    changed = true;
   }
   editingWasNew = false; editingSnapshot = null;
+  if (parkedRemote) {
+    parkedRemote = false;
+    // a commit that changed nothing yields to the remote write; a real
+    // change makes us the newest writer and the other tab follows us
+    if (!changed) adoptRemoteDoc();
+  }
   refresh();
   ensureVisible(focusId); // ghosts reappear on commit — bring them on screen
 }
@@ -1151,6 +1177,7 @@ function importSharedFromHash() {
 }
 
 function addSharedMap(d, rename) {
+  reloadIndex();
   if (rename) {
     // map name IS the central idea (title derives from root text),
     // so numbering the root text renames both at once
@@ -1169,6 +1196,7 @@ function addSharedMap(d, rename) {
 }
 
 function replaceSharedMap(d) {
+  reloadIndex();
   const entry = mapIndex.find(m => m.title === titleOf(d));
   if (!entry) { addSharedMap(d, false); return; }
   localStorage.setItem(mapKey(entry.id), JSON.stringify(d));
@@ -1207,9 +1235,50 @@ $('#zoom-out').addEventListener('click', () => zoomAt(innerWidth / 2, innerHeigh
 
 $('#mobiletoggle').addEventListener('click', () => { ui.forceMobile = !ui.forceMobile; refresh(); });
 
+/* ---------------- cross-tab sync ----------------
+   localStorage fires 'storage' in every OTHER tab on a real change — the
+   writer never hears its own echo. Index changes keep the drawer honest;
+   changes to the map on screen are adopted live. Concurrency policy is
+   last-writer-wins on whole docs: while a local edit is in progress the
+   remote doc is parked, and only adopted if the commit turns out to be a
+   no-op — otherwise our save is the newest write and the other tab follows. */
+
+let parkedRemote = false; // a remote write to the open map arrived mid-edit
+
+function adoptRemoteDoc() {
+  // read storage, not the event payload — events queue, storage holds the newest write
+  const json = localStorage.getItem(mapKey(currentMapId));
+  const d = loadJSON(mapKey(currentMapId));
+  if (!d || !d.root) return;
+  if ((d.v || 0) > DOC_VERSION) return; // written by a newer app version — don't touch it
+  lastSavedDoc = json;
+  doc = hydrateDoc(d);
+  migrateSides();
+  markDirty(); reindexIfNeeded();
+  if (!nodeMap.has(focusId)) focusId = doc.root.id;
+  refresh();
+}
+
+addEventListener('storage', e => {
+  if (e.key === INDEX_KEY) {
+    reloadIndex();
+    if (!mapIndex.some(m => m.id === currentMapId)) {
+      // the map on screen was deleted in another tab; switching away can't
+      // resurrect it — saveDoc() finds no index entry and refuses to write
+      parkedRemote = false;
+      toast('this map was deleted in another tab');
+      if (mapIndex.length) switchMap(mapIndex[0].id);
+      else newMap();
+    } else if (mapsDialog.open) renderMaps();
+  } else if (e.key === mapKey(currentMapId) && e.newValue) {
+    if (editingId) { parkedRemote = true; return; }
+    adoptRemoteDoc();
+  }
+});
+
 /* ---------------- boot ---------------- */
 
-window.__mm = () => ({ focusId, editingId, rootId: doc.root.id, currentMapId, undoDepth: undoStack.length });
+window.__mm = () => ({ focusId, editingId, rootId: doc.root.id, currentMapId, undoDepth: undoStack.length, parked: !!parkedRemote });
 
 migrateSides();
 reindex(); indexDirty = false;
