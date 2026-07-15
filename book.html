@@ -112,6 +112,7 @@
     <a href="#chrome">chrome</a>
     <a href="#menu">context menu</a>
     <a href="#panel">shortcuts panel</a>
+    <a href="#changes">changelog</a>
     <a href="#feedback">toast &amp; marquee</a>
     <a href="#empty">empty canvas</a>
   </nav>
@@ -236,6 +237,8 @@
         <figure class="specimen"><div class="stage2"><span class="mm-saved">all changes saved locally</span></div><figcaption><span class="name">saved indicator</span><code>.mm-saved</code></figcaption></figure>
         <figure class="specimen"><div class="stage2"><div class="mm-zoom"><button>−</button>100%<button>+</button></div></div><figcaption><span class="name">zoom</span><code>.mm-zoom</code></figcaption></figure>
         <figure class="specimen"><div class="stage2"><button class="mm-help">?</button></div><figcaption><span class="name">help</span><code>.mm-help</code></figcaption></figure>
+        <figure class="specimen"><div class="stage2"><button class="mm-newslink">what’s new</button></div><figcaption><span class="name">changes link</span><code>.mm-newslink</code></figcaption></figure>
+        <figure class="specimen"><div class="stage2"><button class="mm-newslink has-news">what’s new</button></div><figcaption><span class="name">unseen entries</span><code>.mm-newslink.has-news</code></figcaption></figure>
       </div>
     </section>
 
@@ -298,6 +301,48 @@
             </div>
           </div>
           <figcaption><span class="name">shortcuts panel</span><code>.mm-panel</code></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============ changes ============ -->
+    <section id="changes">
+      <h2>changelog panel</h2>
+      <p class="section-note">Opened from the “what’s new” link in the top bar. Entries are plain HTML in <code style="display:inline">index.html</code>; the newest entry’s <code style="display:inline">data-date</code> drives the unseen dot on the trigger.</p>
+      <div class="specimens">
+        <figure class="specimen wide">
+          <div class="stage2" style="padding: 10px 0">
+            <div class="mm-panel" style="width:min(460px, 92vw)">
+              <h3 class="mm-panel-title">what’s new <small>Esc to close</small></h3>
+              <div class="mm-changelog">
+                <div class="mm-changelog-entry">
+                  <h4>july 15, 2026</h4>
+                  <ul>
+                    <li>this “what’s new” dialog — new features get announced right here</li>
+                  </ul>
+                </div>
+                <div class="mm-changelog-entry">
+                  <h4>july 14, 2026</h4>
+                  <ul>
+                    <li>yggmap goes live at yggmap.com 🌱</li>
+                    <li>keyboard-first mapping: Tab for a child, Enter for a sibling</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+          <figcaption><span class="name">changelog</span><code>.mm-changelog / .mm-changelog-entry</code></figcaption>
+        </figure>
+        <figure class="specimen">
+          <div class="stage2">
+            <div class="mm-scroll" style="max-height: 110px; width: 240px; font-size: 16px; color: var(--mm-ink-soft)">
+              <p>long panel content scrolls behind a quiet, ink-toned scrollbar.</p>
+              <p>the track stays invisible; only the thumb shows.</p>
+              <p>used by the changelog and the maps list.</p>
+              <p>any panel region can opt in with one class.</p>
+            </div>
+          </div>
+          <figcaption><span class="name">panel scrollbar</span><code>.mm-scroll</code></figcaption>
         </figure>
       </div>
     </section>

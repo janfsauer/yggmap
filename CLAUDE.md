@@ -73,4 +73,5 @@ Key ideas that span multiple functions:
 - Design language: hand-drawn/sketchy — Patrick Hand + Caveat, paper/card tokens, wobble border-radii (`--mm-wobble-*`), slight rotations. New UI must speak it; generic-flat elements stick out immediately.
 - All component classes are `.mm-*` prefixed and live in `styles.css`; positioning of app chrome lives in `index.html`.
 - `mockups/` is design history — don't extend it; new visual explorations get their own mockup file there.
+- **Changelog**: the "what's new" dialog (`#changeslist` in `index.html`) holds dated entries; the newest entry's `data-date` drives the unseen dot on the trigger (compared against `ui.changesSeen`). After completing a **user-visible** change, ask whether it should get a changelog entry — and include the proposed entry in the question (real current date via `date`, bullets in the app's lowercase voice). Internal/dev-only changes don't qualify. New entries go on top; pruning old ones from the bottom is always safe.
 - Commit messages: no Claude attribution or trailers (this is not an ISO-scope repo).

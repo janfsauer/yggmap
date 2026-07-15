@@ -404,6 +404,30 @@
 }
 .mm-help:hover { box-shadow: var(--mm-shadow-lift); }
 
+.mm-newslink {
+  all: unset;
+  position: relative;
+  cursor: pointer;
+  font-family: var(--mm-font-script);
+  font-size: 18px;
+  color: var(--mm-ink);
+  opacity: .45;
+  transform: rotate(-1.5deg);
+  transition: opacity .15s ease;
+}
+.mm-newslink:hover { opacity: .85; }
+.mm-newslink.has-news { opacity: .8; }
+.mm-newslink.has-news::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: -10px;
+  width: 7px;
+  height: 7px;
+  border-radius: 55% 45% 50% 60% / 45% 55% 60% 50%;
+  background: var(--mm-marker);
+}
+
 /* ============================================================
    context menu
    ============================================================ */
@@ -499,6 +523,53 @@
 }
 .mm-shortcut-row .keys { white-space: nowrap; }
 .mm-shortcut-row .mm-kbd { margin-left: 4px; }
+
+/* scrollable region inside panels — quiet, ink-toned scrollbar.
+   Standard props cover Chrome + Firefox; ::-webkit-* covers Safari. */
+.mm-scroll {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(58, 53, 50, .3) transparent;
+}
+.mm-scroll::-webkit-scrollbar { width: 8px; }
+.mm-scroll::-webkit-scrollbar-track { background: transparent; }
+.mm-scroll::-webkit-scrollbar-thumb {
+  background: rgba(58, 53, 50, .3);
+  border-radius: 8px 5px 9px 5px / 5px 9px 5px 8px;
+}
+.mm-scroll::-webkit-scrollbar-thumb:hover { background: rgba(58, 53, 50, .5); }
+
+.mm-changelog {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 55vh;
+  padding-right: 6px;
+}
+.mm-changelog-entry h4 {
+  font-family: var(--mm-font-script);
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--mm-marker);
+  margin: 0 0 4px;
+}
+.mm-changelog-entry ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.mm-changelog-entry li {
+  font-size: 16.5px;
+  color: var(--mm-ink-soft);
+  padding: 2px 0;
+}
+.mm-changelog-entry li::before {
+  content: "✦";
+  color: var(--mm-marker);
+  opacity: .65;
+  margin-right: 9px;
+  font-size: 13px;
+}
 
 /* ============================================================
    toast

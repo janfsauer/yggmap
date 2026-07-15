@@ -31,7 +31,6 @@ let focusId = doc.root.id;
 let editingId = null;
 let editingWasNew = false;
 let editingSnapshot = null;
-let panelOpen = false;
 
 let nodeMap = new Map(), parentMap = new Map(), depthMap = new Map();
 let nodeEls = new Map();          // id -> element (includes ghost ids)
@@ -135,7 +134,7 @@ function newMap() {
   mapIndex.unshift({ id, title: 'untitled', updated: Date.now() });
   saveIndex();
   switchMap(id);
-  toggleMaps(false);
+  mapsDialog.toggle(false);
   startEdit(doc.root);
 }
 
@@ -912,12 +911,9 @@ document.addEventListener('keydown', e => {
   }
   if (mod) return;
 
-  if (mapsOpen) {
-    if (e.key === 'Escape') { e.preventDefault(); toggleMaps(false); }
-    return;
-  }
-  if (panelOpen) {
-    if (e.key === 'Escape' || e.key === '?') { e.preventDefault(); togglePanel(false); }
+  const dlg = openDialog();
+  if (dlg) {
+    if (dlg.closeKeys.includes(e.key)) { e.preventDefault(); dlg.toggle(false); }
     return;
   }
 
@@ -933,7 +929,7 @@ document.addEventListener('keydown', e => {
     case 'F2': e.preventDefault(); startEdit(focus); return;
     case 'Escape': e.preventDefault(); return;
     case ' ': spaceDown = true; e.preventDefault(); return;
-    case '?': e.preventDefault(); togglePanel(true); return;
+    case '?': e.preventDefault(); helpDialog.toggle(true); return;
     case '.': e.preventDefault(); toggleCollapse(focus); return;
     case '0': e.preventDefault(); fitMap(); return;
     case '+': case '=': e.preventDefault(); zoomAt(innerWidth / 2, innerHeight / 2, 1.2); return;
@@ -949,14 +945,32 @@ document.addEventListener('keydown', e => {
 });
 document.addEventListener('keyup', e => { if (e.key === ' ') spaceDown = false; });
 
+/* ---------------- dialogs ---------------- */
+
+/* every overlay is the same pattern — trigger button + backdrop,
+   click-outside and close-keys handled once; a new dialog is one call */
+const dialogs = [];
+function makeDialog(backdropSel, btnSel, { onOpen, closeKeys = ['Escape'] } = {}) {
+  const backdrop = $(backdropSel);
+  const dlg = {
+    open: false,
+    closeKeys,
+    toggle(open) {
+      dlg.open = open;
+      backdrop.classList.toggle('open', open);
+      if (open) onOpen?.();
+    },
+  };
+  $(btnSel).addEventListener('click', () => dlg.toggle(!dlg.open));
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) dlg.toggle(false); });
+  dialogs.push(dlg);
+  return dlg;
+}
+const openDialog = () => dialogs.find(d => d.open);
+
 /* ---------------- maps drawer ---------------- */
 
-let mapsOpen = false;
-function toggleMaps(open) {
-  mapsOpen = open;
-  $('#mapsbackdrop').classList.toggle('open', open);
-  if (open) renderMaps();
-}
+const mapsDialog = makeDialog('#mapsbackdrop', '#mapsbtn', { onOpen: renderMaps });
 
 function relDate(t) {
   const d = Date.now() - t;
@@ -986,12 +1000,11 @@ function renderMaps() {
       }
     });
     row.appendChild(del);
-    row.addEventListener('click', () => { switchMap(m.id); toggleMaps(false); });
+    row.addEventListener('click', () => { switchMap(m.id); mapsDialog.toggle(false); });
     list.appendChild(row);
   }
 }
 
-$('#mapsbtn').addEventListener('click', () => toggleMaps(!mapsOpen));
 $('#newmapbtn').addEventListener('click', newMap);
 $('#exportbtn').addEventListener('click', exportAll);
 $('#importbtn').addEventListener('click', () => $('#importfile').click());
@@ -999,16 +1012,24 @@ $('#importfile').addEventListener('change', e => {
   if (e.target.files[0]) importFile(e.target.files[0]);
   e.target.value = '';
 });
-$('#mapsbackdrop').addEventListener('click', e => { if (e.target === $('#mapsbackdrop')) toggleMaps(false); });
 
 /* ---------------- panel, buttons ---------------- */
 
-function togglePanel(open) {
-  panelOpen = open;
-  $('#backdrop').classList.toggle('open', open);
+const helpDialog = makeDialog('#backdrop', '#helpbtn', { closeKeys: ['Escape', '?'] });
+
+/* changes dialog: entries are plain HTML in index.html; the newest
+   entry's data-date drives the "unseen" dot on the trigger */
+const latestChange = $('#changeslist [data-date]')?.dataset.date || '';
+// brand-new visitors get a calm first screen (nothing is "news" yet);
+// returning users without the field keep it unset so the dot shows
+if (ui.changesSeen === undefined && !loadJSON(UI_KEY)) ui.changesSeen = latestChange;
+makeDialog('#changesbackdrop', '#changesbtn', {
+  onOpen() { ui.changesSeen = latestChange; saveUI(); updateChangesDot(); },
+});
+function updateChangesDot() {
+  $('#changesbtn').classList.toggle('has-news', ui.changesSeen !== latestChange);
 }
-$('#helpbtn').addEventListener('click', () => togglePanel(!panelOpen));
-$('#backdrop').addEventListener('click', e => { if (e.target === $('#backdrop')) togglePanel(false); });
+updateChangesDot();
 
 $('#zoom-in').addEventListener('click', () => zoomAt(innerWidth / 2, innerHeight / 2, 1.2));
 $('#zoom-out').addEventListener('click', () => zoomAt(innerWidth / 2, innerHeight / 2, 1 / 1.2));
