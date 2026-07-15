@@ -948,9 +948,10 @@ document.addEventListener('keyup', e => { if (e.key === ' ') spaceDown = false; 
 /* ---------------- dialogs ---------------- */
 
 /* every overlay is the same pattern — trigger button + backdrop,
-   click-outside and close-keys handled once; a new dialog is one call */
+   click-outside and close-keys handled once; a new dialog is one call.
+   btnSel is optional for dialogs the app opens itself (e.g. share import) */
 const dialogs = [];
-function makeDialog(backdropSel, btnSel, { onOpen, closeKeys = ['Escape'] } = {}) {
+function makeDialog(backdropSel, btnSel, { onOpen, onClose, closeKeys = ['Escape'] } = {}) {
   const backdrop = $(backdropSel);
   const dlg = {
     open: false,
@@ -958,10 +959,10 @@ function makeDialog(backdropSel, btnSel, { onOpen, closeKeys = ['Escape'] } = {}
     toggle(open) {
       dlg.open = open;
       backdrop.classList.toggle('open', open);
-      if (open) onOpen?.();
+      if (open) onOpen?.(); else onClose?.();
     },
   };
-  $(btnSel).addEventListener('click', () => dlg.toggle(!dlg.open));
+  if (btnSel) $(btnSel).addEventListener('click', () => dlg.toggle(!dlg.open));
   backdrop.addEventListener('click', e => { if (e.target === backdrop) dlg.toggle(false); });
   dialogs.push(dlg);
   return dlg;
@@ -987,6 +988,12 @@ function renderMaps() {
     const row = document.createElement('div');
     row.className = 'map-row' + (m.id === currentMapId ? ' current' : '');
     row.innerHTML = `<span class="mtitle">${escapeHTML(m.title)}</span><span class="mdate">${relDate(m.updated)}</span>`;
+    const share = document.createElement('button');
+    share.className = 'mshare';
+    share.textContent = '🔗';
+    share.title = 'copy share link';
+    share.addEventListener('click', e => { e.stopPropagation(); copyShareLink(m.id); });
+    row.appendChild(share);
     const del = document.createElement('button');
     del.className = 'mdel';
     del.textContent = '✕';
@@ -1031,6 +1038,137 @@ function updateChangesDot() {
 }
 updateChangesDot();
 
+/* ---------------- share links ---------------- */
+/* a share URL carries the whole map in its fragment — gzip → base64url —
+   so the map never touches a server (fragments aren't sent in requests);
+   opening the link imports a copy into "my maps" */
+
+function b64uEncode(bytes) {
+  let s = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) // chunked: spreading 100k args blows the stack
+    s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(s).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
+}
+function b64uDecode(str) {
+  return Uint8Array.from(atob(str.replaceAll('-', '+').replaceAll('_', '/')), c => c.charCodeAt(0));
+}
+const gzip = text =>
+  new Response(new Blob([text]).stream().pipeThrough(new CompressionStream('gzip')))
+    .arrayBuffer().then(b => new Uint8Array(b));
+const gunzip = bytes =>
+  new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+
+async function copyShareLink(id) {
+  if (id === currentMapId) { if (editingId) commitEdit(false); saveDoc(); }
+  const d = loadJSON(mapKey(id));
+  if (!d) return;
+  const url = location.origin + location.pathname + '#share=' + b64uEncode(await gzip(JSON.stringify(d)));
+  try {
+    await navigator.clipboard.writeText(url);
+    toast('link copied — it carries a full copy of this map');
+  } catch {
+    // clipboard API needs a secure context + permission; fall back to the old way
+    const ta = document.createElement('textarea');
+    ta.value = url;
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove();
+    toast(ok ? 'link copied — it carries a full copy of this map' : 'could not copy the link');
+  }
+}
+
+let pendingShare = null; // doc waiting on the keep-both / replace decision
+const shareDialog = makeDialog('#sharebackdrop', null, {
+  // closed without choosing (Esc / click outside) = ignore the link
+  onClose() { if (pendingShare) { pendingShare = null; toast('link ignored — your maps are untouched'); } },
+});
+$('#sharekeep').addEventListener('click', () => {
+  const d = pendingShare; pendingShare = null;
+  shareDialog.toggle(false);
+  if (d) addSharedMap(d, true);
+});
+$('#sharereplace').addEventListener('click', () => {
+  const d = pendingShare; pendingShare = null;
+  shareDialog.toggle(false);
+  if (d) replaceSharedMap(d);
+});
+
+function importSharedFromHash() {
+  const m = location.hash.match(/^#share=([A-Za-z0-9_-]+)/);
+  if (!m) return;
+  // consume the hash either way — a reload must not re-run the import
+  history.replaceState(null, '', location.pathname + location.search);
+  // decode inside the chain: atob can throw synchronously on a mangled
+  // hash, and that must land in the same catch as async failures
+  Promise.resolve(m[1]).then(s => gunzip(b64uDecode(s))).then(txt => {
+    const d = JSON.parse(txt);
+    if (!d.root || !d.root.id) throw new Error('not a map');
+    // fail fast on links from a future format instead of breaking at render
+    if ((d.v || 0) > DOC_VERSION) { toast('this link was made by a newer version of the app'); return; }
+    hydrateDoc(d);
+    if (mapIndex.some(x => x.title === titleOf(d))) {
+      pendingShare = d;
+      $('#sharename').textContent = titleOf(d);
+      shareDialog.toggle(true);
+    } else {
+      addSharedMap(d, false);
+    }
+  }).catch(() => toast('could not read that share link'));
+}
+
+function addSharedMap(d, rename) {
+  if (rename) {
+    // map name IS the central idea (title derives from root text),
+    // so numbering the root text renames both at once
+    const base = titleOf(d);
+    let n = 2;
+    while (mapIndex.some(m => m.title === `${base} ${n}`)) n++;
+    d.root.text = `${base} ${n}`;
+  }
+  prunePristineOnly();
+  const id = genMapId();
+  localStorage.setItem(mapKey(id), JSON.stringify(d));
+  mapIndex.unshift({ id, title: titleOf(d), updated: Date.now() });
+  saveIndex();
+  switchMap(id);
+  toast(`“${titleOf(d)}” added to your maps`);
+}
+
+function replaceSharedMap(d) {
+  const entry = mapIndex.find(m => m.title === titleOf(d));
+  if (!entry) { addSharedMap(d, false); return; }
+  localStorage.setItem(mapKey(entry.id), JSON.stringify(d));
+  entry.updated = Date.now();
+  saveIndex();
+  if (entry.id === currentMapId) {
+    // switchMap() no-ops on the current id — swap the live doc by hand
+    if (editingId) commitEdit(false);
+    doc = d;
+    migrateSides();
+    undoStack = []; redoStack = [];
+    markDirty();
+    focusId = doc.root.id; editingId = null;
+    refresh();
+    fitMap();
+  } else {
+    switchMap(entry.id);
+  }
+  toast(`“${titleOf(d)}” replaced with the shared copy`);
+}
+
+/* opening a share link on a fresh install shouldn't leave the stray
+   untouched "untitled" map behind in the drawer */
+function prunePristineOnly() {
+  if (mapIndex.length !== 1) return;
+  const only = loadJSON(mapKey(mapIndex[0].id));
+  if (only && !only.root.text && !only.root.children.length) {
+    localStorage.removeItem(mapKey(mapIndex[0].id));
+    mapIndex = [];
+    saveIndex();
+  }
+}
+
 $('#zoom-in').addEventListener('click', () => zoomAt(innerWidth / 2, innerHeight / 2, 1.2));
 $('#zoom-out').addEventListener('click', () => zoomAt(innerWidth / 2, innerHeight / 2, 1 / 1.2));
 
@@ -1052,3 +1190,7 @@ document.fonts.ready.then(() => {
 });
 setTimeout(() => document.body.classList.add('anim'), 300);
 addEventListener('resize', () => refresh());
+importSharedFromHash();
+// pasting a share link into an already-open tab is a same-document
+// navigation — no reload, so the boot-time check above never sees it
+addEventListener('hashchange', importSharedFromHash);

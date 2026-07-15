@@ -101,8 +101,8 @@
   }
   body.can-toggle-mobile #mobiletoggle { display: inline-flex; }
 
-  #backdrop, #mapsbackdrop, #changesbackdrop { display: none; }
-  #backdrop.open, #mapsbackdrop.open, #changesbackdrop.open { display: grid; }
+  #backdrop, #mapsbackdrop, #changesbackdrop, #sharebackdrop { display: none; }
+  #backdrop.open, #mapsbackdrop.open, #changesbackdrop.open, #sharebackdrop.open { display: grid; }
 
   #firsthint {
     display: none;
@@ -130,6 +130,10 @@
   .map-row .mdate { font-family: var(--mm-font-script); font-size: 14.5px; color: var(--mm-ink-faint); white-space: nowrap; }
   .map-row .mdel { all: unset; cursor: pointer; color: var(--mm-ink-faint); font-size: 14px; padding: 2px 6px; font-family: var(--mm-font-hand); }
   .map-row .mdel:hover { color: #c25b4a; }
+  .map-row .mshare { all: unset; cursor: pointer; font-size: 13px; padding: 2px 4px; filter: grayscale(1); opacity: .45; }
+  .map-row .mshare:hover { opacity: 1; }
+  #sharebackdrop p { font-size: 17px; color: var(--mm-ink-soft); margin: -6px 0 20px; }
+  #sharebackdrop .share-hint { font-family: var(--mm-font-script); font-size: 15px; color: var(--mm-ink-faint); }
   .maps-actions { display: flex; align-items: center; gap: 10px; }
   .maps-actions .mini {
     all: unset; cursor: pointer;
@@ -143,7 +147,9 @@
 
   #toasts {
     position: fixed; bottom: calc(88px + env(safe-area-inset-bottom)); left: 50%;
-    transform: translateX(-50%); z-index: 50;
+    /* above .mm-backdrop (100): toasts confirm actions taken from inside
+       dialogs (e.g. copy link), so they must never sit under the blur */
+    transform: translateX(-50%); z-index: 200;
     display: flex; flex-direction: column; align-items: center; gap: 8px;
   }
   .mm-toast button {
@@ -236,6 +242,7 @@
         <div class="mm-changelog-entry" data-date="2026-07-15">
           <h4>july 15, 2026</h4>
           <ul>
+            <li>share a map with a link — the whole map travels inside the url, so it never touches a server; tap 🔗 next to a map in ☰ my maps</li>
             <li>this “what’s new” dialog — new features get announced right here</li>
           </ul>
         </div>
@@ -249,6 +256,19 @@
             <li>works on phones — tap the ghost buttons to grow the map</li>
           </ul>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mm-backdrop" id="sharebackdrop">
+    <div class="mm-panel" style="width:min(440px, 92vw)">
+      <h3 class="mm-panel-title">incoming map</h3>
+      <p>this link carries “<span id="sharename"></span>” — but you already have a map with that name.</p>
+      <div class="maps-actions">
+        <button class="mini accent" id="sharekeep">keep both</button>
+        <button class="mini" id="sharereplace">replace mine</button>
+        <span style="flex:1"></span>
+        <span class="share-hint">Esc to ignore the link</span>
       </div>
     </div>
   </div>
