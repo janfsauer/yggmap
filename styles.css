@@ -354,15 +354,6 @@
   margin-right: 7px;
 }
 
-.mm-saved {
-  font-family: var(--mm-font-script);
-  font-size: 18px;
-  color: var(--mm-ink-faint);
-  transform: rotate(1deg);
-  display: inline-block;
-}
-.mm-saved::before { content: "✓ "; color: var(--mm-ok); }
-
 .mm-zoom {
   display: inline-flex;
   align-items: center;
