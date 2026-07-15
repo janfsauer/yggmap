@@ -83,6 +83,7 @@
   color: var(--mm-ink);
   width: max-content;
   max-width: 260px;
+  text-align: center;
   /* an empty node (mid-edit) has no line box — never collapse below one line
      (1lh + vertical padding + border; border-box sizing) */
   min-height: calc(1lh + 16px + 4.4px);
