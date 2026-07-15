@@ -70,3 +70,8 @@ when adding components.
 Maps are KB-sized JSON, so `localStorage` is fine; the storage functions in
 `app.js` are isolated so a later IndexedDB swap (e.g. for attachments) stays
 local to that section.
+
+## License
+
+[MIT](LICENSE) — free for everyone, forever. Copyright Piotr Korzuszek and
+yggmap contributors.
