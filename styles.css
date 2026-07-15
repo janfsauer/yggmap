@@ -563,6 +563,53 @@
   font-size: 13px;
 }
 
+/* footer strip inside a panel — one quiet afterthought line */
+.mm-panel-foot {
+  margin-top: 22px;
+  padding-top: 12px;
+  border-top: 2px dashed rgba(58, 53, 50, .18);
+  text-align: center;
+}
+.mm-textlink {
+  all: unset;
+  cursor: pointer;
+  font-family: var(--mm-font-script);
+  font-size: 17.5px;
+  color: var(--mm-ink-faint);
+  transition: color .15s ease;
+}
+.mm-textlink:hover { color: var(--mm-marker); }
+
+/* about panel — a few handwritten paragraphs of philosophy.
+   Lead-ins use <b> restyled as script+marker to echo the panel h4s
+   (Patrick Hand has no real bold; synthetic bold looks off-brand). */
+.mm-about p {
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--mm-ink-soft);
+  margin: 0 0 13px;
+}
+.mm-about b {
+  font-family: var(--mm-font-script);
+  font-weight: 700;
+  font-size: 18.5px;
+  color: var(--mm-marker);
+  margin-right: 3px; /* Caveat's slant eats the following space */
+}
+.mm-about a {
+  color: var(--mm-marker);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+.mm-about .sig {
+  font-family: var(--mm-font-script);
+  font-size: 18px;
+  color: var(--mm-ink-faint);
+  text-align: right;
+  margin: 16px 0 0;
+  transform: rotate(-1deg);
+}
+
 /* ============================================================
    toast
    ============================================================ */

@@ -1053,6 +1053,10 @@ $('#importfile').addEventListener('change', e => {
 
 const helpDialog = makeDialog('#backdrop', '#helpbtn', { closeKeys: ['Escape', '?'] });
 
+/* the about link lives inside the shortcuts panel — hand over, don't stack */
+makeDialog('#aboutbackdrop', '#aboutlink');
+$('#aboutlink').addEventListener('click', () => helpDialog.toggle(false));
+
 /* changes dialog: entries are plain HTML in index.html; the newest
    entry's data-date drives the "unseen" dot on the trigger */
 const latestChange = $('#changeslist [data-date]')?.dataset.date || '';

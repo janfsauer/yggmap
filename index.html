@@ -100,8 +100,8 @@
   }
   body.can-toggle-mobile #mobiletoggle { display: inline-flex; }
 
-  #backdrop, #mapsbackdrop, #changesbackdrop, #sharebackdrop { display: none; }
-  #backdrop.open, #mapsbackdrop.open, #changesbackdrop.open, #sharebackdrop.open { display: grid; }
+  #backdrop, #mapsbackdrop, #changesbackdrop, #sharebackdrop, #aboutbackdrop { display: none; }
+  #backdrop.open, #mapsbackdrop.open, #changesbackdrop.open, #sharebackdrop.open, #aboutbackdrop.open { display: grid; }
 
   #firsthint {
     display: none;
@@ -230,6 +230,21 @@
           <div class="mm-shortcut-row"><span>fit map</span><span class="keys"><kbd class="mm-kbd">0</kbd></span></div>
         </div>
       </div>
+      <div class="mm-panel-foot"><button class="mm-textlink" id="aboutlink">made with ♥ — about yggmap</button></div>
+    </div>
+  </div>
+
+  <div class="mm-backdrop" id="aboutbackdrop">
+    <div class="mm-panel" style="width:min(460px, 92vw)">
+      <h3 class="mm-panel-title">about yggmap <small>Esc to close</small></h3>
+      <div class="mm-about">
+        <p>yggmap is a small love letter to thinking on paper — one page that opens ready, so nothing stands between you and the idea.</p>
+        <p><b>private by construction:</b> your maps live in this browser and nowhere else. there is no server to trust — even share links carry the whole map inside the url.</p>
+        <p><b>keyboard-first:</b> Tab grows a child, Enter a sibling — the map keeps up with your thinking. the ghost hints teach you, then quietly fade out of the way.</p>
+        <p><b>hand-drawn on purpose:</b> tidy diagrams invite tidy thoughts too early. wobbly lines leave room for the half-formed ones.</p>
+        <p>the name is a nod to <b>yggdrasil</b>, the world tree — every map a small world growing from a single idea.</p>
+        <p class="sig">free &amp; open source — <a href="https://github.com/genail/yggmap" target="_blank" rel="noopener">github.com/genail/yggmap</a> 🌱</p>
+      </div>
     </div>
   </div>
 
@@ -242,6 +257,7 @@
           <ul>
             <li>share a map with a link — the whole map travels inside the url, so it never touches a server; tap 🔗 next to a map in ☰ my maps</li>
             <li>arrow keys now follow the branches — left/right walk in and out, up/down step between siblings</li>
+            <li>the ? panel now ends with a little about page — the why behind yggmap</li>
             <li>this “what’s new” dialog — new features get announced right here</li>
           </ul>
         </div>

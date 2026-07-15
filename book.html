@@ -112,6 +112,7 @@
     <a href="#chrome">chrome</a>
     <a href="#menu">context menu</a>
     <a href="#panel">shortcuts panel</a>
+    <a href="#about">about panel</a>
     <a href="#changes">changelog</a>
     <a href="#feedback">toast &amp; marquee</a>
     <a href="#empty">empty canvas</a>
@@ -297,9 +298,31 @@
                   <div class="mm-shortcut-row"><span>fit map</span><span class="keys"><kbd class="mm-kbd">0</kbd></span></div>
                 </div>
               </div>
+              <div class="mm-panel-foot"><button class="mm-textlink">made with ♥ — about yggmap</button></div>
             </div>
           </div>
-          <figcaption><span class="name">shortcuts panel</span><code>.mm-panel</code></figcaption>
+          <figcaption><span class="name">shortcuts panel</span><code>.mm-panel / .mm-panel-foot / .mm-textlink</code></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============ about ============ -->
+    <section id="about">
+      <h2>about panel</h2>
+      <p class="section-note">Opened from the footer link inside the shortcuts panel (the help dialog closes first — panels hand over, they don’t stack). A few handwritten paragraphs; lead-ins are <code style="display:inline">&lt;b&gt;</code> restyled as script + marker to echo the panel <code style="display:inline">h4</code>s, since Patrick Hand has no real bold.</p>
+      <div class="specimens">
+        <figure class="specimen wide">
+          <div class="stage2" style="padding: 10px 0">
+            <div class="mm-panel" style="width:min(460px, 92vw)">
+              <h3 class="mm-panel-title">about yggmap <small>Esc to close</small></h3>
+              <div class="mm-about">
+                <p>yggmap is a small love letter to thinking on paper — one page that opens ready, so nothing stands between you and the idea.</p>
+                <p><b>private by construction:</b> your maps live in this browser and nowhere else. there is no server to trust — even share links carry the whole map inside the url.</p>
+                <p class="sig">free &amp; open source — <a href="https://github.com/genail/yggmap">github.com/genail/yggmap</a> 🌱</p>
+              </div>
+            </div>
+          </div>
+          <figcaption><span class="name">about panel</span><code>.mm-about</code></figcaption>
         </figure>
       </div>
     </section>
