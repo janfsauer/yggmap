@@ -745,13 +745,42 @@ function setFocus(id) {
 function navigate(dx, dy) {
   const cur = lastPos.get(focusId);
   if (!cur) return;
+  const node = nodeMap.get(focusId);
+  const parent = parentMap.get(focusId);
+
+  /* left/right follow the tree, not the pixels: toward the root climbs
+     to the parent, away from it descends to the vertically nearest child */
+  if (dx) {
+    const side = parent ? topSide(node) : (dx > 0 ? 'R' : 'L');
+    const away = (side === 'R') === (dx > 0);
+    if (!away) { if (parent) setFocus(parent.id); return; }
+    let best = null, bestDist = Infinity;
+    for (const c of node.children) {
+      if (!parent && c.side !== side) continue; // root: only the pressed side
+      const p = lastPos.get(c.id); // collapsed children aren't laid out
+      if (!p) continue;
+      const d = Math.abs(p.y - cur.y);
+      if (d < bestDist) { bestDist = d; best = c.id; }
+    }
+    if (best) setFocus(best);
+    return;
+  }
+
+  /* up/down step between siblings in rendered order; past the edge of
+     the run, hop to the nearest node in a strict vertical cone so
+     adjacent branches stay reachable */
+  if (parent) {
+    const sibs = parent.children
+      .filter(c => lastPos.has(c.id) && (parent !== doc.root || c.side === node.side))
+      .sort((a, b) => lastPos.get(a.id).y - lastPos.get(b.id).y);
+    const next = sibs[sibs.indexOf(node) + dy];
+    if (next) { setFocus(next.id); return; }
+  }
   let best = null, bestScore = Infinity;
   for (const [id, p] of lastPos) {
     if (id === focusId || id.startsWith('ghost:')) continue;
-    const vx = p.x - cur.x, vy = p.y - cur.y;
-    const along = vx * dx + vy * dy;
-    if (along <= 8) continue;
-    const off = Math.abs(vx * dy) + Math.abs(vy * dx);
+    const along = (p.y - cur.y) * dy, off = Math.abs(p.x - cur.x);
+    if (along <= 8 || off > along) continue;
     const score = along + off * 2.2;
     if (score < bestScore) { bestScore = score; best = id; }
   }
