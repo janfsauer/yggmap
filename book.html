@@ -4,10 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>yggmap — component book</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css"><!-- fonts are self-hosted, declared in styles.css -->
 <style>
   /* ---- book-only chrome (not part of the design system) ---- */
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -377,6 +374,17 @@
         <figure class="specimen">
           <div class="stage2"><div class="mm-toast">node deleted <span style="color:var(--mm-ink-faint)">—</span> <kbd class="mm-kbd">⌘</kbd><kbd class="mm-kbd">Z</kbd> to undo</div></div>
           <figcaption><span class="name">toast</span><code>.mm-toast</code></figcaption>
+        </figure>
+        <figure class="specimen">
+          <div class="stage2">
+            <div class="mm-notice">
+              <div class="mm-notice-title">welcome to the installed yggmap</div>
+              it keeps its own maps, separate from the browser tab's. had maps there?
+              in the browser: <b>my maps → export all</b>, then <b>import</b> the file here.
+              <button class="mm-notice-btn">got it</button>
+            </div>
+          </div>
+          <figcaption><span class="name">notice — persistent, dismissed by hand</span><code>.mm-notice</code></figcaption>
         </figure>
         <figure class="specimen" style="flex:1">
           <div class="stage2">

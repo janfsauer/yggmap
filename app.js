@@ -25,8 +25,10 @@ let lastSavedDoc = null; // raw JSON last read from / written to storage for the
                          // current map — lets saveDoc() skip no-op writes, so a
                          // tab that changed nothing can never overwrite another
                          // tab's fresh data with its own stale copy
-let docReadOnly = false; // another tab wrote this map in a newer doc format —
-                         // this stale tab must not downgrade-clobber it
+let docReadOnly = false; // this map is in a newer doc format than this code
+                         // understands — a stale tab must not downgrade-clobber it
+let readOnlyToastAt = 0; // throttle: one read-only reminder per toast lifetime,
+                         // not one per blocked keystroke
 let doc = initStorage();
 let ui = Object.assign(
   { learn: { tab: 0, enter: 0 }, forceMobile: false, debug: false, view: null },
@@ -63,6 +65,34 @@ function isPristine() { return !doc.root.text && !doc.root.children.length; }
 function hydrateDoc(d) {
   if (!d.v) d.v = DOC_VERSION;
   return d;
+}
+
+/* every load of the CURRENT map comes through here: a doc stamped by a newer
+   app version latches read-only instead of letting stale code re-save — and
+   thus launder — a format it doesn't understand. Same policy as
+   adoptRemoteDoc, which guards the storage-event path; without this the
+   latch could be escaped by simply reloading or switching maps. */
+function loadCurrentDoc(raw) {
+  const d = hydrateDoc(raw || freshDoc());
+  if ((d.v || 0) > DOC_VERSION) {
+    docReadOnly = true;
+    toastReadOnly();
+  }
+  return d;
+}
+
+function toastReadOnly() {
+  if (Date.now() - readOnlyToastAt < 4500) return;
+  readOnlyToastAt = Date.now();
+  toast('this map was updated by a newer version of the app — reload to keep editing');
+}
+
+/* mutations are refused while the latch is on — otherwise "read-only" would
+   mean "type freely, watch the saves vanish" (saveDoc drops them silently) */
+function guardReadOnly() {
+  if (!docReadOnly) return false;
+  toastReadOnly();
+  return true;
 }
 
 /* top-level branches keep a persistent side so inserting nodes
@@ -103,7 +133,7 @@ function initStorage() {
   currentMapId = localStorage.getItem(CURRENT_KEY);
   if (!mapIndex.some(m => m.id === currentMapId)) currentMapId = mapIndex[0].id;
   lastSavedDoc = localStorage.getItem(mapKey(currentMapId));
-  return hydrateDoc(loadJSON(mapKey(currentMapId)) || freshDoc());
+  return loadCurrentDoc(loadJSON(mapKey(currentMapId)));
 }
 
 function titleOf(d) { return (d.root.text || '').trim() || 'untitled'; }
@@ -139,7 +169,7 @@ function switchMap(id) {
   localStorage.setItem(CURRENT_KEY, id);
   docReadOnly = false; // the latch is per map — a fresh load starts writable
   lastSavedDoc = localStorage.getItem(mapKey(id));
-  doc = hydrateDoc(loadJSON(mapKey(id)) || freshDoc());
+  doc = loadCurrentDoc(loadJSON(mapKey(id))); // …and re-latches if this map is newer too
   migrateSides();
   undoStack = []; redoStack = [];
   markDirty(); reindexIfNeeded();
@@ -190,6 +220,16 @@ function exportAll() {
     maps: mapIndex.map(m => ({ title: m.title, updated: m.updated, doc: loadJSON(mapKey(m.id)) })),
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  // iOS home-screen apps: a[download] opens a stuck full-screen preview with
+  // no way to save — hand the file to the share sheet instead ("Save to
+  // Files" lives there). navigator.standalone is the iOS-only signal.
+  if (navigator.standalone === true && navigator.canShare) {
+    const file = new File([blob], 'mindmaps-export.json', { type: 'application/json' });
+    if (navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file] }).catch(() => {}); // user closing the sheet is fine
+      return;
+    }
+  }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'mindmaps-export.json';
@@ -205,10 +245,12 @@ function importFile(file) {
       toast('this file was exported by a newer version of the app');
       return;
     }
-    let n = 0;
+    let n = 0, skipped = 0;
     reloadIndex();
     for (const m of (data.maps || [])) {
       if (!m.doc || !m.doc.root) continue;
+      // per-map stamp: a hand-mixed file must not smuggle in a doc we'd launder
+      if ((m.doc.v || 0) > DOC_VERSION) { skipped++; continue; }
       const id = genMapId();
       localStorage.setItem(mapKey(id), JSON.stringify(hydrateDoc(m.doc)));
       mapIndex.unshift({ id, title: m.title || titleOf(m.doc), updated: Date.now() });
@@ -216,10 +258,26 @@ function importFile(file) {
     }
     saveIndex();
     renderMaps();
-    toast(n ? `imported ${n} map${n === 1 ? '' : 's'}` : 'no maps found in that file');
+    // a silent skip reads as data loss — always say what was left behind
+    const parts = [];
+    if (n) parts.push(`imported ${n} map${n === 1 ? '' : 's'}`);
+    if (skipped) parts.push(`${skipped} skipped (made by a newer version of the app)`);
+    toast(parts.join(' — ') || 'no maps found in that file');
   }).catch(() => toast('could not read that file'));
 }
 function saveUI() { ui.view = view; localStorage.setItem(UI_KEY, JSON.stringify(ui)); }
+
+/* durable storage: ask the browser once the user has real content to lose.
+   Chrome decides silently on engagement signals, Firefox may show a prompt —
+   either way we ask exactly once and never nag (the flag persists in ui).
+   On iOS this is a no-op for durability; there the installed app is the
+   protection (see the standalone notice). */
+function maybeRequestPersist() {
+  if (ui.persistAsked || !navigator.storage || !navigator.storage.persist) return;
+  if (countDescendants(doc.root) < 3) return; // engagement = an actual map, not a stray tap
+  ui.persistAsked = true; saveUI();
+  navigator.storage.persist().catch(() => {});
+}
 
 function reindex() {
   nodeMap.clear(); parentMap.clear(); depthMap.clear();
@@ -244,8 +302,8 @@ function restore(json) {
   refresh();
   ensureVisible(focusId);
 }
-function undo() { if (!undoStack.length) return; redoStack.push(snapshot()); restore(undoStack.pop()); }
-function redo() { if (!redoStack.length) return; undoStack.push(snapshot()); restore(redoStack.pop()); }
+function undo() { if (guardReadOnly() || !undoStack.length) return; redoStack.push(snapshot()); restore(undoStack.pop()); }
+function redo() { if (guardReadOnly() || !redoStack.length) return; undoStack.push(snapshot()); restore(redoStack.pop()); }
 
 /* ---------------- ghosts ---------------- */
 
@@ -257,7 +315,8 @@ function learnLevel(key) {
 }
 
 function ghostSpecs() {
-  if (editingId || !focusId || isPristine()) return [];
+  // read-only: ghosts advertise creation, and creation is refused
+  if (editingId || !focusId || isPristine() || docReadOnly) return [];
   const focus = nodeMap.get(focusId);
   if (!focus) return [];
   const mobile = isMobile();
@@ -495,7 +554,8 @@ function renderChrome() {
   const mobile = isMobile();
   document.body.classList.toggle('mobile', mobile);
   document.body.classList.toggle('desktop', !mobile);
-  document.body.classList.toggle('firstvisit', isPristine());
+  // no "just start typing" invite on a latched map — typing would be refused
+  document.body.classList.toggle('firstvisit', isPristine() && !docReadOnly);
   $('#firsthint').textContent = editingId ? 'press Enter when done' : 'just start typing';
   document.body.classList.toggle('can-toggle-mobile', ui.debug && !matchMedia('(pointer: coarse)').matches);
   $('#mobiletoggle').textContent = ui.forceMobile ? '⌨️ back to desktop' : '📱 mobile preview';
@@ -558,7 +618,7 @@ const TAB_TAG = Math.random().toString(36).slice(2, 6);
 function newNode() { return { id: 'n' + (doc.seq++) + TAB_TAG, text: '', children: [] }; }
 
 function createChild(parent) {
-  if (!parent) return;
+  if (!parent || guardReadOnly()) return;
   pushUndo();
   const node = newNode();
   if (parent.id === doc.root.id) {
@@ -573,7 +633,7 @@ function createChild(parent) {
 }
 
 function createSibling(node) {
-  if (!node || node.id === doc.root.id) return;
+  if (!node || node.id === doc.root.id || guardReadOnly()) return;
   pushUndo();
   const parent = parentMap.get(node.id);
   const sib = newNode();
@@ -585,7 +645,7 @@ function createSibling(node) {
 }
 
 function deleteNode(node) {
-  if (!node || node.id === doc.root.id) return;
+  if (!node || node.id === doc.root.id || guardReadOnly()) return;
   pushUndo();
   const parent = parentMap.get(node.id);
   const n = 1 + countDescendants(node);
@@ -596,7 +656,7 @@ function deleteNode(node) {
 }
 
 function cycleColor(node) {
-  if (!node) return;
+  if (!node || guardReadOnly()) return;
   pushUndo();
   const i = COLOR_CYCLE.indexOf(node.color);
   if (node.id === doc.root.id) {
@@ -610,6 +670,9 @@ function cycleColor(node) {
 }
 
 function toggleCollapse(node) {
+  // deliberately NOT latch-guarded: collapse is view state saveDoc can't
+  // persist while read-only, and blocking it would make collapsed branches
+  // unreadable in a latched tab
   if (!node || !node.children.length) return;
   node.collapsed = !node.collapsed;
   if (node.collapsed) {
@@ -627,7 +690,7 @@ function toggleCollapse(node) {
 let editStartAt = 0;
 
 function startEdit(node, replaceWith, isNew = false) {
-  if (!node || editingId) return;
+  if (!node || editingId || guardReadOnly()) return;
   editingId = node.id;
   editStartAt = performance.now();
   editingWasNew = isNew;
@@ -699,11 +762,18 @@ function commitEdit(cancel) {
     changed = true;
   }
   editingWasNew = false; editingSnapshot = null;
+  maybeRequestPersist();
   if (parkedRemote) {
     parkedRemote = false;
+    // a parked write from a NEWER app version always wins, changed or not —
+    // adoptRemoteDoc refuses it and latches, so our commit can't become the
+    // newest write over a doc we'd launder
+    const remote = loadJSON(mapKey(currentMapId));
+    if (remote && (remote.v || 0) > DOC_VERSION) {
+      adoptRemoteDoc(); // refuses + latches; saveDoc drops this commit
     // a commit that changed nothing yields to the remote write; a real
     // change makes us the newest writer and the other tab follows us
-    if (!changed) {
+    } else if (!changed) {
       // only touch the doc if adoption really happened — on a refused
       // adoption the node maps still describe the pre-removal doc, and
       // surgery on stale maps would cut into real content
@@ -1313,7 +1383,7 @@ function adoptRemoteDoc() {
     // toast once per latching, not per remote commit
     if (!docReadOnly) {
       docReadOnly = true;
-      toast('this map was updated by a newer version of the app — reload to keep editing');
+      toastReadOnly();
     }
     return false;
   }
@@ -1355,14 +1425,14 @@ addEventListener('storage', e => {
 
 /* ---------------- boot ---------------- */
 
-window.__mm = () => ({ focusId, editingId, rootId: doc.root.id, currentMapId, undoDepth: undoStack.length, parked: !!parkedRemote });
+window.__mm = () => ({ focusId, editingId, rootId: doc.root.id, currentMapId, undoDepth: undoStack.length, parked: !!parkedRemote, readOnly: docReadOnly });
 
 migrateSides();
 reindex(); indexDirty = false;
 applyView();
 refresh();
 if (!ui.view) fitMap();
-if (isPristine()) startEdit(doc.root); // untouched map boots straight into the caret
+if (isPristine() && !docReadOnly) startEdit(doc.root); // untouched map boots straight into the caret
 document.fonts.ready.then(() => {
   refresh();
   if (!loadJSON(UI_KEY)) fitMap(); // first run: fit after real fonts settle
@@ -1373,3 +1443,32 @@ importSharedFromHash();
 // pasting a share link into an already-open tab is a same-document
 // navigation — no reload, so the boot-time check above never sees it
 addEventListener('hashchange', importSharedFromHash);
+
+// offline support: sw.js keeps a network-first cache snapshot of the app
+// shell. Registration failure (old browser, sandboxed context) costs nothing —
+// the app just stays online-only.
+if ('serviceWorker' in navigator)
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+
+/* iOS home-screen apps run in their own storage container, separate from the
+   Safari tab's — a user who had maps there would otherwise conclude they were
+   eaten. Chromium installed PWAs SHARE the profile's storage, so the warning
+   would be false on them: navigator.standalone is the iOS-only signal (same
+   as exportAll's share-sheet path). One card, first run only, and only while
+   this install is still pristine. */
+(function maybeShowStandaloneNotice() {
+  if (navigator.standalone !== true || ui.standaloneNoticeSeen) return;
+  if (mapIndex.length !== 1 || !isPristine()) return; // content here already — nothing to warn about
+  ui.standaloneNoticeSeen = true; saveUI();
+  const card = document.createElement('div');
+  card.className = 'mm-notice mm-notice--fixed';
+  card.innerHTML = '<div class="mm-notice-title">welcome to the installed yggmap</div>'
+    + 'it keeps its own maps, separate from the browser tab&rsquo;s. had maps there? '
+    + 'in the browser: <b>my maps → export all</b>, then <b>import</b> the file here.';
+  const b = document.createElement('button');
+  b.className = 'mm-notice-btn';
+  b.textContent = 'got it';
+  b.addEventListener('click', () => card.remove());
+  card.appendChild(b);
+  document.body.appendChild(card);
+})();

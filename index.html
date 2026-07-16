@@ -28,10 +28,12 @@
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="yggmap">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="stylesheet" href="styles.css"><!-- fonts are self-hosted, declared in styles.css -->
 <style>
   /* ---- app shell (component styles live in styles.css) ---- */
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -252,6 +254,14 @@
     <div class="mm-panel" style="width:min(460px, 92vw)">
       <h3 class="mm-panel-title">what’s new <small>Esc to close</small></h3>
       <div class="mm-changelog mm-scroll" id="changeslist">
+        <div class="mm-changelog-entry" data-date="2026-07-16">
+          <h4>july 16, 2026</h4>
+          <ul>
+            <li>yggmap now works offline — after one visit, the app loads with no network at all</li>
+            <li>install it from your browser (add to home screen / install app) for a full-screen yggmap of your own</li>
+            <li>fonts moved in with the app — nothing is ever requested from anyone else’s servers</li>
+          </ul>
+        </div>
         <div class="mm-changelog-entry" data-date="2026-07-15">
           <h4>july 15, 2026</h4>
           <ul>
