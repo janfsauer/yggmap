@@ -37,6 +37,7 @@ delete ui.createMode; // retired A/B experiment (ghosts won over the bar)
 
 let focusId = doc.root.id;
 let editingId = null;
+let grabId = null; // grab mode: the picked-up node awaiting a drop target
 let editingWasNew = false;
 let editingSnapshot = null;
 
@@ -167,6 +168,7 @@ function switchMap(id) {
   saveDoc();
   currentMapId = id;
   localStorage.setItem(CURRENT_KEY, id);
+  grabId = null; // a grab never survives into a different map
   docReadOnly = false; // the latch is per map — a fresh load starts writable
   lastSavedDoc = localStorage.getItem(mapKey(id));
   doc = loadCurrentDoc(loadJSON(mapKey(id))); // …and re-latches if this map is newer too
@@ -316,7 +318,8 @@ function learnLevel(key) {
 
 function ghostSpecs() {
   // read-only: ghosts advertise creation, and creation is refused
-  if (editingId || !focusId || isPristine() || docReadOnly) return [];
+  // grabbing: every node tap means "drop here" — create hints would mislead
+  if (editingId || grabId || !focusId || isPristine() || docReadOnly) return [];
   const focus = nodeMap.get(focusId);
   if (!focus) return [];
   const mobile = isMobile();
@@ -375,8 +378,9 @@ function ghostLabel(kind) {
 
 function renderShadow(shadow) {
   const seen = new Set();
-  (function walk(sh) {
+  (function walk(sh, inGrab) {
     seen.add(sh.id);
+    inGrab = inGrab || sh.id === grabId;
     const el = elFor(sh);
     if (sh.ghost) {
       el.className = 'mm-ghost is-placed' +
@@ -393,6 +397,8 @@ function renderShadow(shadow) {
       if (node.color) cls += ' b-' + node.color;
       if (sh.id === focusId && sh.id !== editingId) cls += ' is-focused';
       if (sh.id === editingId) cls += ' is-editing';
+      if (sh.id === grabId) cls += ' is-dragging';
+      else if (inGrab) cls += ' is-grab-dim';
       el.className = cls;
       if (sh.id !== editingId) {
         const badge = node.collapsed && node.children.length
@@ -406,8 +412,8 @@ function renderShadow(shadow) {
         if (el.dataset.label !== key) { el.innerHTML = html; el.dataset.label = key; }
       }
     }
-    sh.children.forEach(walk);
-  })(shadow);
+    sh.children.forEach(c => walk(c, inGrab));
+  })(shadow, false);
   for (const [id, el] of [...nodeEls]) {
     if (!seen.has(id)) { el.remove(); nodeEls.delete(id); }
   }
@@ -508,23 +514,26 @@ function hashIds(a, b) {
   return h + 1;
 }
 
+/* where a node's element ACTUALLY is right now — includes in-flight
+   left/top transitions and the translate of a card being dragged */
+function rectPos(id) {
+  const el = nodeEls.get(id);
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  return {
+    x: ((r.left + r.right) / 2 - view.x) / view.s,
+    y: ((r.top + r.bottom) / 2 - view.y) / view.s,
+    w: r.width / view.s, h: r.height / view.s
+  };
+}
+
 let animTimer = null;
 function animateLinks() {
   cancelAnimationFrame(animTimer);
   const t0 = performance.now();
-  const fromRects = id => {
-    const el = nodeEls.get(id);
-    if (!el) return null;
-    const r = el.getBoundingClientRect();
-    return {
-      x: ((r.left + r.right) / 2 - view.x) / view.s,
-      y: ((r.top + r.bottom) / 2 - view.y) / view.s,
-      w: r.width / view.s, h: r.height / view.s
-    };
-  };
   (function frame(t) {
-    drawLinks(fromRects);
-    if (t - t0 < 360) animTimer = requestAnimationFrame(frame);
+    drawLinks(rectPos);
+    if (t - t0 < 360 || gripDrag?.moved) animTimer = requestAnimationFrame(frame);
     else drawLinks(id => lastPos.get(id));
   })(t0);
 }
@@ -533,6 +542,8 @@ function animateLinks() {
 
 function refresh() {
   reindexIfNeeded();
+  // the grabbed node can vanish under us (undo, remote adoption) — let go
+  if (grabId && !nodeMap.has(grabId)) grabId = null;
   const shadow = buildShadow();
   renderShadow(shadow);
   const pos = layoutShadow(shadow);
@@ -541,6 +552,7 @@ function refresh() {
   if (document.body.classList.contains('anim')) animateLinks();
   else drawLinks(id => lastPos.get(id));
   renderChrome();
+  renderGrip();
   saveDoc(); saveUI();
 }
 
@@ -561,9 +573,14 @@ function renderChrome() {
   $('#mobiletoggle').textContent = ui.forceMobile ? '⌨️ back to desktop' : '📱 mobile preview';
   $('#zoom-val').textContent = Math.round(view.s * 100) + '%';
 
+  document.body.classList.toggle('grabbing', !!grabId);
+
   // desktop hint strip (contextual)
   const strip = $('#hintstrip');
-  if (editingId) {
+  if (grabId) {
+    strip.innerHTML = '<span>moving — click or tap where it should go</span>' +
+      hint('↵', 'drop into focused') + hint('Esc', 'cancel');
+  } else if (editingId) {
     strip.innerHTML = hint('Enter', 'done') + hint('Tab', 'done + child') + hint('Esc', 'cancel');
   } else {
     strip.innerHTML = hint('Tab', 'child') + hint('Enter', 'sibling') + hint('⌫', 'delete') +
@@ -574,7 +591,9 @@ function renderChrome() {
   const bar = $('#actionbar');
   bar.innerHTML = '';
   let actions = [];
-  if (editingId) {
+  if (grabId) {
+    actions = [['✕', 'cancel', cancelGrab, 'danger']];
+  } else if (editingId) {
     actions = [
       ['✕', 'cancel', () => commitEdit(true)],
       ['＋', 'child', () => { const id = editingId; commitEdit(false); const n = nodeMap.get(id); if (n) createChild(n); }],
@@ -586,8 +605,10 @@ function renderChrome() {
     actions.push([colorDots(), 'color', () => cycleColor(focus)]);
     if (focus && focus.children.length)
       actions.push([focus.collapsed ? '⌃' : '⌄', focus.collapsed ? 'expand' : 'collapse', () => toggleCollapse(focus)]);
-    if (focusId !== doc.root.id)
+    if (focusId !== doc.root.id) {
+      actions.push([gripDots(18), 'move', () => startGrab(focus)]);
       actions.push(['✕', 'delete', () => deleteNode(focus), 'danger']);
+    }
   }
   for (const [glyph, label, fn, kind] of actions) {
     const b = document.createElement('button');
@@ -599,6 +620,152 @@ function renderChrome() {
     bar.appendChild(b);
   }
   bar.classList.toggle('has-actions', actions.length > 0);
+}
+
+/* ---------------- drag tab (pointer pick-up) ---------------- */
+/* A paper folder-tab peeking from behind a node's top edge. On desktop it
+   leans out of the node under the MOUSE — hover reveals it, focus is not
+   required. On touch there is no hover, so it rides the FOCUSED node.
+   Press-and-drag = drag and drop: the lifted card follows the cursor and
+   releases onto the node under it. Press-and-release without crossing the
+   pan/tap threshold = grab mode, for targets that need panning to reach. */
+
+const TAB_PEEK = 24; // world px of tab sticking out above the card
+let gripEl = null, gripDrag = null, gripAt = null, dropTargetEl = null;
+let hoverId = null; // desktop only: the node under the mouse
+
+/* the six ink dots — the one "drag me" mark, shared by the tab and the
+   mobile move button so both read as the same handle */
+function gripDots(size) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24"><g fill="currentColor">` +
+    '<circle cx="8.2" cy="5.9" r="1.75"/><circle cx="15.8" cy="6.2" r="1.65"/>' +
+    '<circle cx="7.9" cy="12.1" r="1.7"/><circle cx="16.2" cy="11.9" r="1.75"/>' +
+    '<circle cx="8.1" cy="18.2" r="1.65"/><circle cx="15.9" cy="17.9" r="1.7"/></g></svg>';
+}
+
+function setHover(id) {
+  if (gripDrag || id === hoverId) return; // frozen while a drag is live
+  hoverId = id;
+  renderGrip();
+}
+
+viewportEl.addEventListener('pointerover', e => {
+  if (e.pointerType !== 'mouse') return; // touch reveals by focus, not hover
+  if (e.target.closest('.mm-grip')) return; // sliding onto the tab keeps it out
+  const n = e.target.closest('.mm-node');
+  setHover(n ? n.dataset.id : null);
+});
+
+function setDropTarget(el) {
+  if (dropTargetEl === el) return;
+  dropTargetEl?.classList.remove('is-drop-target');
+  dropTargetEl = el;
+  el?.classList.add('is-drop-target');
+}
+
+/* rect hit-test in world coords via lastPos — elementFromPoint would see
+   the dragged card and grip riding under the cursor */
+function nodeIdAt(clientX, clientY) {
+  const wx = (clientX - view.x) / view.s, wy = (clientY - view.y) / view.s;
+  for (const [id, p] of lastPos) {
+    if (id.startsWith('ghost:')) continue;
+    if (Math.abs(wx - p.x) > p.w / 2 || Math.abs(wy - p.y) > p.h / 2) continue;
+    for (let t = nodeMap.get(id); t; t = parentMap.get(t.id))
+      if (t.id === grabId) return null; // inside the grabbed subtree
+    return id;
+  }
+  return null;
+}
+
+function clearGripVisuals(d) {
+  const nel = nodeEls.get(d.id);
+  if (nel) nel.style.translate = '';
+  gripEl.style.translate = '';
+  gripEl.classList.remove('dragging');
+  setDropTarget(null);
+}
+
+function renderGrip() {
+  if (!gripEl) {
+    gripEl = document.createElement('div');
+    gripEl.className = 'mm-grip';
+    gripEl.innerHTML = gripDots(17);
+    // FIRST child of the layer: painted beneath every card, so it genuinely
+    // peeks from behind the paper — no z-index games
+    nodesEl.prepend(gripEl);
+
+    /* one exit for every way a drag can end — a release, a cancel, a lost
+       capture, a blurred window, or a missed pointerup noticed late. commit
+       says whether the user's intent was "let go here" (drop) or "abort". */
+    const finishDrag = (e, commit) => {
+      const d = gripDrag;
+      gripDrag = null;
+      if (!d) return;
+      clearGripVisuals(d);
+      if (!d.moved) { if (commit) startGrab(nodeMap.get(d.id)); return; } // a click: aim-then-click flow
+      if (!grabId) return; // Esc already let go mid-drag
+      const overId = commit && e ? nodeIdAt(e.clientX, e.clientY) : null;
+      if (overId && overId !== d.id) dropGrab(overId);
+      else cancelGrab(); // empty paper or own subtree — snap back
+    };
+
+    gripEl.addEventListener('pointerdown', e => {
+      e.stopPropagation(); // never a pan, never a node tap
+      e.preventDefault();
+      if (gripDrag) finishDrag(null, false); // a stale drag can never trap the next one
+      cancelGlide();
+      gripEl.setPointerCapture(e.pointerId);
+      gripDrag = { id: gripAt, x: e.clientX, y: e.clientY, moved: false };
+    });
+    gripEl.addEventListener('pointermove', e => {
+      if (!gripDrag) return;
+      // the pointerup can get lost (release outside the window, focus steal):
+      // a move with no contact means the drag already ended — honor it
+      // (touch contact also reports buttons&1, so this is safe for fingers)
+      if (!(e.buttons & 1)) {
+        finishDrag(e, gripDrag.moved);
+        return;
+      }
+      if (!gripDrag.moved) {
+        // same 8px threshold the canvas uses to tell a tap from a drag
+        if (Math.hypot(e.clientX - gripDrag.x, e.clientY - gripDrag.y) <= 8) return;
+        gripDrag.moved = true;
+        gripEl.classList.add('dragging'); // kill transitions: 1:1 cursor follow
+        startGrab(nodeMap.get(gripDrag.id)); // lift: ghosts leave, subtree dims
+      }
+      if (!grabId) { // Esc mid-drag let go — stop carrying the card
+        clearGripVisuals(gripDrag);
+        gripDrag = null;
+        return;
+      }
+      const t = `${(e.clientX - gripDrag.x) / view.s}px ${(e.clientY - gripDrag.y) / view.s}px`;
+      const nel = nodeEls.get(gripDrag.id);
+      if (nel) nel.style.translate = t;
+      gripEl.style.translate = t;
+      const overId = nodeIdAt(e.clientX, e.clientY);
+      setDropTarget(overId && overId !== gripDrag.id ? nodeEls.get(overId) : null);
+    });
+    gripEl.addEventListener('pointerup', e => finishDrag(e, true));
+    gripEl.addEventListener('pointercancel', e => finishDrag(e, false));
+    // capture can vanish without a pointerup (spec allows it) — never strand the card
+    gripEl.addEventListener('lostpointercapture', () => finishDrag(null, false));
+    window.addEventListener('blur', () => finishDrag(null, false));
+  }
+  const targetId = isMobile() ? focusId : hoverId;
+  const p = targetId && targetId !== doc.root.id ? lastPos.get(targetId) : null;
+  const show = !!p && !editingId && !docReadOnly && (!grabId || gripDrag?.moved);
+  if (show) {
+    gripEl.style.left = p.x - p.w / 2 + 14 + 'px';
+    gripEl.style.top = p.y - p.h / 2 - TAB_PEEK + 'px';
+    if (gripEl.classList.contains('show') && gripAt !== targetId) {
+      gripEl.classList.remove('show'); void gripEl.offsetWidth; // restart the pop
+    }
+    gripEl.classList.add('show');
+    gripAt = targetId;
+  } else {
+    gripEl.classList.remove('show');
+    gripAt = null;
+  }
 }
 
 function hint(k, label) { return `<span><kbd class="mm-kbd">${k}</kbd> ${label}</span>`; }
@@ -653,6 +820,100 @@ function deleteNode(node) {
   markDirty(); focusId = parent.id;
   refresh();
   toast(`deleted ${n === 1 ? 'node' : n + ' nodes'}`, 'undo', undo);
+}
+
+/* ⌥+arrows move the focused node. Directions are spatial, mirroring
+   navigate(): vertical = reorder among siblings, away from root = demote
+   into the adjacent sibling, toward root = promote next to the former
+   parent — or, at depth 1, flip the branch to the other side. */
+function moveNode(dx, dy) {
+  const node = nodeMap.get(focusId);
+  const parent = parentMap.get(focusId);
+  if (!node || !parent || guardReadOnly()) return; // no parent = root
+  const arr = parent.children;
+  // the run a node moves within: at depth 1, only its own side of the map
+  const run = arr.filter(c => parent !== doc.root || c.side === node.side);
+  const i = run.indexOf(node);
+
+  if (dy) {
+    const target = run[i + dy];
+    if (!target) return; // edge of the run — nowhere to go
+    pushUndo();
+    arr.splice(arr.indexOf(node), 1);
+    arr.splice(arr.indexOf(target) + (dy > 0 ? 1 : 0), 0, node);
+  } else {
+    const side = topSide(node);
+    const away = (side === 'R') === (dx > 0);
+    if (away) {
+      // demote: prefer the sibling above (append), else below (prepend) —
+      // either way the node barely moves on screen
+      const target = run[i - 1] || run[i + 1];
+      if (!target) return;
+      pushUndo();
+      arr.splice(arr.indexOf(node), 1);
+      target.collapsed = false;
+      i > 0 ? target.children.push(node) : target.children.unshift(node);
+    } else if (parent === doc.root) {
+      pushUndo();
+      node.side = side === 'R' ? 'L' : 'R';
+    } else {
+      // promote: become the next sibling of the former parent
+      const grandArr = parentMap.get(parent.id).children;
+      pushUndo();
+      arr.splice(arr.indexOf(node), 1);
+      grandArr.splice(grandArr.indexOf(parent) + 1, 0, node);
+      if (parentMap.get(parent.id) === doc.root) {
+        node.side = parent.side;
+        if (!node.color) node.color = parent.color; // adopt the family hue
+      }
+    }
+  }
+  markDirty();
+  refresh();
+  ensureVisible(focusId);
+}
+
+/* ---------------- grab mode (pick up · aim · drop) ---------------- */
+/* Reparenting for pointers and long keyboard hops. Grabbing is state, not
+   a held pointer: the lifted node waits while the map stays fully
+   navigable (pan, pinch, arrows), then one Enter / tap / click on a target
+   adopts the subtree as its last child. */
+
+function startGrab(node) {
+  if (!node || node.id === doc.root.id || guardReadOnly()) return;
+  grabId = node.id;
+  focusId = node.id; // picking up a hovered-but-unfocused node claims focus
+  refresh();
+}
+
+function cancelGrab() {
+  if (!grabId) return;
+  grabId = null;
+  refresh();
+}
+
+function dropGrab(targetId) {
+  const node = nodeMap.get(grabId), target = nodeMap.get(targetId);
+  if (!node || !target) { cancelGrab(); return; }
+  for (let t = target; t; t = parentMap.get(t.id))
+    if (t === node) { toast("a branch can't move into itself"); return; }
+  if (guardReadOnly()) return; // the latch may have flipped mid-grab
+  pushUndo();
+  if (target === doc.root && !node.color) {
+    // adopt the family hue, same policy as ⌥-promote
+    let branch = node;
+    while (parentMap.get(branch.id) !== doc.root) branch = parentMap.get(branch.id);
+    node.color = branch.color;
+  }
+  const arr = parentMap.get(node.id).children;
+  arr.splice(arr.indexOf(node), 1);
+  if (target === doc.root) node.side = lighterSide(); // counted without the node — it's already out
+  target.collapsed = false;
+  target.children.push(node);
+  grabId = null;
+  markDirty(); focusId = node.id;
+  refresh();
+  ensureVisible(focusId);
 }
 
 function cycleColor(node) {
@@ -1038,6 +1299,8 @@ viewportEl.addEventListener('pointerup', e => {
   const el = info.target;
   if (!el) return;
   const id = el.dataset.id;
+  // a tap while grabbing means "drop here", never focus/edit/create
+  if (grabId) { if (!id.startsWith('ghost:')) dropGrab(id); return; }
   // ghost taps don't count toward keyboard learning — only real key presses do
   if (id === GHOST_CHILD) { createChild(nodeMap.get(focusId)); return; }
   if (id === GHOST_SIB) { createSibling(nodeMap.get(focusId)); return; }
@@ -1082,7 +1345,31 @@ document.addEventListener('keydown', e => {
     return;
   }
 
+  // grab mode is modal: arrows keep aiming, Enter drops, Esc/M lets go,
+  // everything else (create, edit, delete) waits until the node is down
+  if (grabId) {
+    e.preventDefault();
+    switch (e.key) {
+      case 'ArrowLeft': navigate(-1, 0); return;
+      case 'ArrowRight': navigate(1, 0); return;
+      case 'ArrowUp': navigate(0, -1); return;
+      case 'ArrowDown': navigate(0, 1); return;
+      case 'Enter': dropGrab(focusId); return;
+      case 'Escape': case 'm': case 'M': cancelGrab(); return;
+    }
+    return;
+  }
+
   const focus = nodeMap.get(focusId);
+
+  // ⌥+arrow moves the node itself — must run before the bare-arrow cases
+  // below would swallow the key and merely navigate
+  if (e.altKey) {
+    const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+    if (d) { e.preventDefault(); moveNode(d[0], d[1]); }
+    return;
+  }
+
   switch (e.key) {
     case 'Tab': e.preventDefault(); ui.learn.tab++; createChild(focus); return;
     case 'Enter': e.preventDefault(); ui.learn.enter++; createSibling(focus); return;
@@ -1100,6 +1387,7 @@ document.addEventListener('keydown', e => {
     case '+': case '=': e.preventDefault(); zoomAt(innerWidth / 2, innerHeight / 2, 1.2); return;
     case '-': e.preventDefault(); zoomAt(innerWidth / 2, innerHeight / 2, 1 / 1.2); return;
     case 'c': case 'C': e.preventDefault(); cycleColor(focus); return;
+    case 'm': case 'M': e.preventDefault(); startGrab(focus); return;
   }
 
   // any other printable character starts editing (replaces text)
@@ -1425,7 +1713,7 @@ addEventListener('storage', e => {
 
 /* ---------------- boot ---------------- */
 
-window.__mm = () => ({ focusId, editingId, rootId: doc.root.id, currentMapId, undoDepth: undoStack.length, parked: !!parkedRemote, readOnly: docReadOnly });
+window.__mm = () => ({ focusId, editingId, grabId, rootId: doc.root.id, currentMapId, undoDepth: undoStack.length, parked: !!parkedRemote, readOnly: docReadOnly });
 
 migrateSides();
 reindex(); indexDirty = false;

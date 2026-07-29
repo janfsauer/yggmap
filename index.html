@@ -223,6 +223,8 @@
         <div class="mm-panel-group">
           <h4>navigate</h4>
           <div class="mm-shortcut-row"><span>move focus</span><span class="keys"><kbd class="mm-kbd">←↑↓→</kbd></span></div>
+          <div class="mm-shortcut-row"><span>move node</span><span class="keys"><kbd class="mm-kbd">⌥</kbd><kbd class="mm-kbd">←↑↓→</kbd></span></div>
+          <div class="mm-shortcut-row"><span>pick up / drop anywhere</span><span class="keys"><kbd class="mm-kbd">M</kbd> … <kbd class="mm-kbd">↵</kbd></span></div>
           <div class="mm-shortcut-row"><span>collapse / expand</span><span class="keys"><kbd class="mm-kbd">.</kbd></span></div>
         </div>
         <div class="mm-panel-group">
@@ -254,6 +256,15 @@
     <div class="mm-panel" style="width:min(460px, 92vw)">
       <h3 class="mm-panel-title">what’s new <small>Esc to close</small></h3>
       <div class="mm-changelog mm-scroll" id="changeslist">
+        <div class="mm-changelog-entry" data-date="2026-07-24">
+          <h4>july 24, 2026</h4>
+          <ul>
+            <li>move nodes with the keyboard — hold ⌥ (alt) + arrows: ↑↓ reorder siblings, away from the center tucks a node under its neighbor, toward the center pulls it out a level (or flips a top-level branch to the other side)</li>
+            <li>nodes grew a little paper tab — it leans out when you hover (or focus, on touch); drag it to carry a branch anywhere</li>
+            <li>prefer clicking? a plain click on the tab (or M) picks the node up — pan and zoom freely, then click or press ↵ where it should go</li>
+            <li>on touch, the move button in the bottom bar (same dots as the tab) also picks the focused node up — pan and pinch freely, then tap the new parent to drop</li>
+          </ul>
+        </div>
         <div class="mm-changelog-entry" data-date="2026-07-16">
           <h4>july 16, 2026</h4>
           <ul>

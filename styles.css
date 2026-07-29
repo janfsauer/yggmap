@@ -231,13 +231,86 @@
   opacity: .75;
 }
 
-/* dragging */
+/* dragging — also the lifted node in grab mode (pick up · aim · drop) */
 .mm-node.is-dragging {
   --s: 1.05;
   --r: 1.6deg;
   box-shadow: var(--mm-shadow-drag);
   opacity: .93;
   cursor: grabbing;
+}
+
+/* the rest of a grabbed subtree: travels along, can't be a drop target */
+.mm-node.is-grab-dim {
+  opacity: .45;
+}
+
+/* candidate target under a grip drag: the marker ring says "release here" */
+.mm-node.is-drop-target {
+  box-shadow: 0 0 0 2.6px var(--mm-marker), 5px 7px 0 rgba(58, 53, 50, .18);
+}
+
+/* drag tab: a paper folder-tab peeking from behind a node's top edge.
+   desktop: leans out of the hovered node; touch: rides the focused node.
+   drag = drop onto the node under the cursor; a plain click = grab mode.
+   it sits FIRST in the #nodes layer so every card paints over it —
+   "behind the paper" comes from DOM order, not z-index */
+.mm-grip {
+  position: absolute;
+  width: 52px;
+  height: 30px;
+  padding-top: 4px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  background: var(--mm-card);
+  border: 1.6px solid var(--mm-ink);
+  border-bottom: none;
+  border-radius: 14px 10px 0 0 / 12px 14px 0 0;
+  box-shadow: inset 0 -6px 6px -7px rgba(58, 53, 50, .5);
+  color: var(--mm-ink-soft);
+  cursor: grab;
+  rotate: -1.2deg;
+  transform-origin: bottom center;
+  translate: 0 26px;           /* tucked fully behind the card… */
+  visibility: hidden;          /* …and unhoverable while hidden */
+  transition:
+    translate .22s cubic-bezier(.55, 0, .8, .6),
+    rotate .18s cubic-bezier(.3, 1.8, .5, 1),
+    color .15s ease,
+    visibility 0s linear .22s; /* stays interactive until fully tucked */
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.mm-grip.show {
+  visibility: visible;
+  translate: 0 0;
+  transition: rotate .18s cubic-bezier(.3, 1.8, .5, 1), color .15s ease;
+  animation: mm-tab-pop .42s cubic-bezier(.3, 1.4, .4, 1);
+}
+@keyframes mm-tab-pop {
+  0%   { translate: 0 26px; }
+  55%  { translate: 0 -5px; }
+  75%  { translate: 0 2px; }
+  100% { translate: 0 0; }
+}
+/* hover: a little "tug me" — strains upward, dots darken */
+.mm-grip.show:hover {
+  translate: 0 -4px;
+  rotate: -4.5deg;
+  color: var(--mm-ink);
+  transition: translate .16s cubic-bezier(.3, 2.2, .5, 1),
+              rotate .16s cubic-bezier(.3, 2.2, .5, 1), color .15s ease;
+}
+.mm-grip.show:active { translate: 0 -1px; rotate: -.6deg; cursor: grabbing; }
+/* mid-drag: 1:1 cursor follow, and the carried pair rides above the map */
+.mm-grip.dragging { transition: none; animation: none; z-index: 6; }
+.mm-node.is-dragging { z-index: 6; }
+
+/* while grabbing, every other node is a drop target */
+body.grabbing .mm-node:not(.is-dragging):not(.is-grab-dim) {
+  cursor: copy;
 }
 
 /* collapsed-children badge, e.g. "+3" */

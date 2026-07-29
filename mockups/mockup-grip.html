@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>yggmap — grip concepts</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--mm-paper);
+    color: var(--mm-ink);
+    font-family: var(--mm-font-hand);
+    -webkit-font-smoothing: antialiased;
+    padding: 48px 30px 90px;
+    overflow-x: hidden;
+  }
+  .grain {
+    position: fixed; inset: 0; opacity: .5; pointer-events: none; z-index: -1;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  h1 {
+    font-family: var(--mm-font-script); font-size: 46px; font-weight: 700;
+    text-align: center; transform: rotate(-.6deg);
+  }
+  .intro {
+    text-align: center; font-size: 17px; color: var(--mm-ink-soft);
+    max-width: 660px; margin: 4px auto 8px;
+  }
+  .legend {
+    text-align: center; font-family: var(--mm-font-script); font-size: 19px;
+    color: var(--mm-ink-faint); margin-bottom: 48px; transform: rotate(.4deg);
+  }
+
+  .sheet {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 46px 30px;
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+
+  .concept { text-align: center; }
+
+  /* the little stage each candidate performs on */
+  .stage {
+    position: relative;
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.6px dashed rgba(58, 53, 50, .18);
+    border-radius: var(--mm-wobble-2);
+  }
+  .card-wrap { position: relative; display: inline-block; }
+  .stage .mm-node { transition: translate .18s ease, box-shadow .18s ease, rotate .18s ease; }
+  /* hovering any grip lifts its card — feel the affordance, don't just look */
+  .stage:has(.grip:hover) .mm-node {
+    translate: 3px -5px;
+    rotate: 1.4deg;
+    box-shadow: 0 0 0 1.3px var(--mm-ink), 7px 11px 0 rgba(58, 53, 50, .16);
+  }
+
+  .concept h3 {
+    font-family: var(--mm-font-script); font-size: 25px; font-weight: 700;
+    margin-top: 15px; transform: rotate(-.5deg);
+  }
+  .concept h3 .tag {
+    font-size: 15px; color: var(--mm-marker); letter-spacing: .4px;
+    vertical-align: 4px; margin-left: 5px;
+  }
+  .concept p {
+    font-size: 15.5px; line-height: 1.35; color: var(--mm-ink-soft);
+    max-width: 260px; margin: 2px auto 0;
+  }
+
+  /* ---------- shared grip chrome ---------- */
+  .grip {
+    position: absolute;
+    display: flex; align-items: center; justify-content: center;
+    cursor: grab;
+    user-select: none; -webkit-user-select: none;
+    color: var(--mm-ink-soft);
+    transition: rotate .15s ease, scale .15s ease, color .15s ease;
+  }
+  .grip:active { cursor: grabbing; }
+  .grip svg { display: block; overflow: visible; }
+
+  /* A · badge grips float above the top edge, like the shipped one */
+  .grip--badge {
+    width: 27px; height: 27px;
+    left: 50%; top: -33px; margin-left: -14px;
+    background: var(--mm-card);
+    border: 1.6px solid var(--mm-ink);
+    border-radius: var(--mm-wobble-3);
+    box-shadow: 2px 3px 0 rgba(58, 53, 50, .14);
+    rotate: -4deg;
+  }
+  .grip--badge:hover { rotate: 4deg; scale: 1.12; color: var(--mm-ink); }
+
+  /* B · the current one, for honest comparison */
+  .grip--glyph { font-size: 13px; }
+
+  /* C · file-folder tab peeking from behind the card's top edge */
+  .grip--tab {
+    left: 14px; top: -24px;
+    width: 52px; height: 30px;
+    padding-top: 4px;
+    background: var(--mm-card);
+    border: 1.6px solid var(--mm-ink);
+    border-bottom: none;
+    border-radius: 14px 10px 0 0 / 12px 14px 0 0;
+    box-shadow: inset 0 -6px 6px -7px rgba(58, 53, 50, .5);
+    z-index: -1;
+    align-items: flex-start;
+    rotate: -1.2deg;
+    transform-origin: bottom center;
+  }
+  .grip--tab:hover { rotate: -3.5deg; translate: 0 -3px; color: var(--mm-ink); }
+
+  /* D · washi tape across the corner */
+  .grip--tape {
+    left: -17px; top: -13px;
+    width: 58px; height: 22px;
+    background: color-mix(in srgb, var(--mm-marker) 32%, transparent);
+    border-left: 1px solid color-mix(in srgb, var(--mm-marker) 45%, transparent);
+    border-right: 1px solid color-mix(in srgb, var(--mm-marker) 45%, transparent);
+    rotate: -38deg;
+    clip-path: polygon(0 6%, 4% 0, 100% 0, 96% 30%, 100% 62%, 97% 100%, 3% 100%, 0 70%, 2% 38%);
+    color: color-mix(in srgb, var(--mm-marker) 75%, var(--mm-ink));
+  }
+  .grip--tape:hover { rotate: -33deg; scale: 1.08; }
+
+  /* E · pushpin: the node is pinned to the paper — pull the pin to move it */
+  .grip--pin {
+    width: 30px; height: 34px;
+    left: 50%; top: -30px; margin-left: -15px;
+    color: var(--mm-ink);
+    filter: drop-shadow(2px 3px 0 rgba(58, 53, 50, .16));
+    rotate: 8deg;
+  }
+  .grip--pin:hover { rotate: -6deg; translate: 0 -3px; }
+
+  /* F · bare corner ticks, no chrome at all */
+  .grip--claw {
+    width: 30px; height: 30px;
+    left: -22px; top: -22px;
+    rotate: 0deg;
+  }
+  .grip--claw:hover { scale: 1.2; color: var(--mm-ink); }
+
+  /* zoomed detail so pen strokes can be judged */
+  .detail {
+    position: absolute; right: 12px; bottom: 10px;
+    width: 58px; height: 58px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--mm-ink-faint);
+    border: 1.4px solid rgba(58, 53, 50, .12);
+    border-radius: 50% 46% 52% 48% / 47% 51% 49% 53%;
+    pointer-events: none;
+  }
+
+  /* ================= four, in motion ================= */
+
+  .playground {
+    max-width: 1180px;
+    margin: 0 auto 64px;
+    text-align: center;
+  }
+  .playground h2 {
+    font-family: var(--mm-font-script); font-size: 32px; font-weight: 700;
+    transform: rotate(-.5deg); margin-bottom: 4px;
+  }
+  .playground .hint {
+    font-size: 15.5px; color: var(--mm-ink-soft); margin-bottom: 26px;
+  }
+  .play-stage {
+    position: relative;
+    height: 300px;
+    border: 1.6px dashed rgba(58, 53, 50, .18);
+    border-radius: var(--mm-wobble-2);
+    overflow: hidden;
+  }
+  .play-node {
+    position: absolute;
+    cursor: pointer;
+    /* contain the tab's z-index:-1 — behind the card, NOT behind the stage
+       (without this the stage swallows the tab's pointer events) */
+    isolation: isolate;
+    /* the snap-home spring after a released drag */
+    transition: translate .45s cubic-bezier(.28, 1.6, .4, 1), rotate .45s cubic-bezier(.28, 1.6, .4, 1);
+  }
+  .play-node.dragging { transition: none; z-index: 4; }
+  .play-node.dragging .mm-node {
+    box-shadow: 0 0 0 1.3px var(--mm-ink), var(--mm-shadow-drag);
+    rotate: 1.6deg;
+  }
+  .play-node .mm-node { transition: box-shadow .2s ease, rotate .2s ease; }
+
+  /* the tab lives behind every card, tucked away… */
+  .play-tab {
+    position: absolute;
+    left: 16px; top: -24px;
+    width: 52px; height: 30px;
+    padding-top: 4px;
+    display: flex; justify-content: center; align-items: flex-start;
+    background: var(--mm-card);
+    border: 1.6px solid var(--mm-ink);
+    border-bottom: none;
+    border-radius: 14px 10px 0 0 / 12px 14px 0 0;
+    box-shadow: inset 0 -6px 6px -7px rgba(58, 53, 50, .5);
+    color: var(--mm-ink-soft);
+    cursor: grab;
+    z-index: -1;
+    rotate: -1.2deg;
+    transform-origin: bottom center;
+    translate: 0 26px;            /* fully hidden behind the card */
+    visibility: hidden;           /* …and unhoverable while tucked */
+    transition:
+      translate .22s cubic-bezier(.55, 0, .8, .6),
+      rotate .18s cubic-bezier(.3, 1.8, .5, 1),
+      color .15s ease,
+      visibility 0s linear .22s;  /* stay hoverable until fully tucked */
+    user-select: none; -webkit-user-select: none;
+    touch-action: none;
+  }
+  .play-tab:active { cursor: grabbing; }
+
+  /* …and springs out on mouse hover (desktop), or on the focused card
+     when simulating touch — where there is no hover to lean on */
+  .play-stage:not(.touch) .play-node:hover .play-tab,
+  .play-stage.touch .play-node.focused .play-tab,
+  .play-node.dragging .play-tab {
+    visibility: visible;
+    translate: 0 0;
+    transition: rotate .18s cubic-bezier(.3, 1.8, .5, 1), color .15s ease;
+    animation: tab-pop .42s cubic-bezier(.3, 1.4, .4, 1);
+  }
+  @keyframes tab-pop {
+    0%   { translate: 0 26px; }
+    55%  { translate: 0 -5px; }
+    75%  { translate: 0 2px; }
+    100% { translate: 0 0; }
+  }
+
+  /* hover: a little "tug me" — the tab strains upward, dots darken */
+  .play-node .play-tab:hover {
+    translate: 0 -4px;
+    rotate: -4.5deg;
+    color: var(--mm-ink);
+    transition: translate .16s cubic-bezier(.3, 2.2, .5, 1), rotate .16s cubic-bezier(.3, 2.2, .5, 1), color .15s ease;
+  }
+  .play-node .play-tab:active { translate: 0 -1px; rotate: -.6deg; }
+
+  .mode-toggle {
+    display: inline-block;
+    margin-bottom: 18px;
+    font-family: var(--mm-font-script); font-size: 18px;
+    color: var(--mm-ink-soft);
+    background: var(--mm-card);
+    border: 1.6px solid var(--mm-ink);
+    border-radius: var(--mm-wobble-3);
+    padding: 3px 16px 1px;
+    cursor: pointer;
+    rotate: -.8deg;
+  }
+  .mode-toggle:hover { color: var(--mm-ink); rotate: .8deg; }
+
+  .verdict {
+    max-width: 620px; margin: 64px auto 0; text-align: center;
+    font-size: 16.5px; color: var(--mm-ink-soft);
+    border-top: 1.6px dashed rgba(58, 53, 50, .22);
+    padding-top: 26px;
+  }
+  .verdict strong { font-family: var(--mm-font-script); font-size: 22px; color: var(--mm-ink); }
+</style>
+</head>
+<body>
+<div class="grain"></div>
+
+<h1>the grip</h1>
+<p class="intro">the little handle that rides the focused node — drag it to carry the branch,
+click it to pick the branch up. six candidates, drawn with the same pen as the rest of yggmap.</p>
+<p class="legend">hover any grip — the card lifts to show what your hand would feel</p>
+
+<section class="playground">
+  <h2>four, in motion</h2>
+  <p class="hint">hover any card — its tab leans out from behind. hover the tab for the tug,
+  then drag it: the card comes along and snaps home when you let go.</p>
+  <button class="mode-toggle" id="modetoggle">🖱 hover mode — click to simulate touch</button>
+  <div class="play-stage" id="playstage">
+    <div class="play-node focused" style="left:12%; top:110px">
+      <div class="play-tab"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-dots"/></svg></div>
+      <div class="mm-node is-focused b-yellow">quarterly plan</div>
+    </div>
+    <div class="play-node" style="left:44%; top:60px">
+      <div class="play-tab"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-dots"/></svg></div>
+      <div class="mm-node b-blue">hire two people</div>
+    </div>
+    <div class="play-node" style="left:66%; top:170px">
+      <div class="play-tab"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-dots"/></svg></div>
+      <div class="mm-node b-pink">marketing site</div>
+    </div>
+  </div>
+</section>
+
+<!-- hand-drawn icon library: jittered strokes, round caps, no perfect geometry -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <g id="i-arrows" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12.1 9.6 L11.9 4.6 M9.9 6.9 L11.9 4.4 L14.2 6.8"/>
+      <path d="M12 14.5 L12.2 19.4 M9.8 17.2 L12.2 19.6 L14.3 17.1"/>
+      <path d="M9.5 12.1 L4.7 11.9 M6.9 9.8 L4.5 11.9 L7 14.2"/>
+      <path d="M14.6 12 L19.4 12.1 M17.2 9.9 L19.6 12.1 L17.1 14.3"/>
+    </g>
+    <g id="i-dots" fill="currentColor" stroke="none">
+      <circle cx="8.2" cy="5.9" r="1.75"/><circle cx="15.8" cy="6.2" r="1.65"/>
+      <circle cx="7.9" cy="12.1" r="1.7"/><circle cx="16.2" cy="11.9" r="1.75"/>
+      <circle cx="8.1" cy="18.2" r="1.65"/><circle cx="15.9" cy="17.9" r="1.7"/>
+    </g>
+    <g id="i-hand" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8.1 11.8 L7.9 7.1"/>
+      <path d="M11.9 11.2 L12 5.8"/>
+      <path d="M15.8 11.9 L16 7.3"/>
+      <path d="M6.4 12.3 C4.9 11.2 4.3 9.7 5.4 8.9 C6.2 8.3 7.3 9 7.9 10"/>
+      <path d="M6.3 11.6 C6.2 15.9 7.6 19 12 19.1 C16.3 19.2 17.8 16.2 17.8 12.4 L17.9 9.9"/>
+    </g>
+    <g id="i-pin" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M7.1 4.6 C9.6 3.6 14.6 3.7 16.9 4.8" stroke-width="2.6"/>
+      <path d="M9.6 5.1 L10.3 10.4 M14.5 5.2 L13.8 10.5"/>
+      <path d="M7.6 11.2 C10 10.4 14.2 10.4 16.4 11.3"/>
+      <path d="M11.9 11.7 L12.2 19.9"/>
+    </g>
+    <g id="i-claw" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+      <path d="M13.9 8.1 C11.3 9 9.3 10.8 8.4 13"/>
+      <path d="M10.2 4.7 C7.2 5.9 4.9 8.3 4 11"/>
+      <path d="M17.6 12.5 C15.4 13.3 13.8 14.7 13 16.5"/>
+    </g>
+  </defs>
+</svg>
+
+<div class="sheet">
+
+  <div class="concept">
+    <div class="stage">
+      <div class="card-wrap">
+        <div class="grip grip--badge grip--glyph">✥</div>
+        <div class="mm-node is-focused">quarterly plan</div>
+      </div>
+      <div class="detail" style="font-size:34px; font-family:var(--mm-font-hand)">✥</div>
+    </div>
+    <h3>zero · shipping today <span class="tag">baseline</span></h3>
+    <p>the unicode ✥ — functional, but a font glyph in a hand-drawn world. this is the one you didn't like.</p>
+  </div>
+
+  <div class="concept">
+    <div class="stage">
+      <div class="card-wrap">
+        <div class="grip grip--badge"><svg width="22" height="22" viewBox="0 0 24 24"><use href="#i-arrows"/></svg></div>
+        <div class="mm-node is-focused b-blue">quarterly plan</div>
+      </div>
+      <div class="detail"><svg width="40" height="40" viewBox="0 0 24 24"><use href="#i-arrows"/></svg></div>
+    </div>
+    <h3>one · sketched compass</h3>
+    <p>the same four-arrow idea, but actually drawn — jittered strokes, uneven heads. the safe evolution.</p>
+  </div>
+
+  <div class="concept">
+    <div class="stage">
+      <div class="card-wrap">
+        <div class="grip grip--badge"><svg width="21" height="21" viewBox="0 0 24 24"><use href="#i-dots"/></svg></div>
+        <div class="mm-node is-focused b-pink">quarterly plan</div>
+      </div>
+      <div class="detail"><svg width="40" height="40" viewBox="0 0 24 24"><use href="#i-dots"/></svg></div>
+    </div>
+    <h3>two · inky dots</h3>
+    <p>the classic six-dot drag handle, dabbed on with a pen. quietest of the bunch; instantly readable as "drag me".</p>
+  </div>
+
+  <div class="concept">
+    <div class="stage">
+      <div class="card-wrap">
+        <div class="grip grip--badge"><svg width="22" height="22" viewBox="0 0 24 24"><use href="#i-hand"/></svg></div>
+        <div class="mm-node is-focused b-green">quarterly plan</div>
+      </div>
+      <div class="detail"><svg width="40" height="40" viewBox="0 0 24 24"><use href="#i-hand"/></svg></div>
+    </div>
+    <h3>three · grabby hand</h3>
+    <p>says exactly what it does. the most literal, most playful — and the busiest at 22 px.</p>
+  </div>
+
+  <div class="concept">
+    <div class="stage">
+      <div class="card-wrap">
+        <div class="grip grip--tab"><svg width="17" height="17" viewBox="0 0 24 24"><use href="#i-dots"/></svg></div>
+        <div class="mm-node is-focused b-yellow">quarterly plan</div>
+      </div>
+      <div class="detail" style="font-family:var(--mm-font-script); font-size:15px">tab</div>
+    </div>
+    <h3>four · folder tab</h3>
+    <p>a paper tab peeking from behind the card — part of the node, not a floating button. big hit area, begs to be pulled.</p>
+  </div>
+
+  <div class="concept">
+    <div class="stage">
+      <div class="card-wrap">
+        <div class="grip grip--pin"><svg width="30" height="34" viewBox="0 0 24 24"><use href="#i-pin"/></svg></div>
+        <div class="mm-node is-focused b-blue">quarterly plan</div>
+      </div>
+      <div class="detail"><svg width="40" height="44" viewBox="0 0 24 24"><use href="#i-pin"/></svg></div>
+    </div>
+    <h3>five · pushpin</h3>
+    <p>the node is pinned to the paper; pull the pin to move it. strongest metaphor, and no box around it at all.</p>
+  </div>
+
+  <div class="concept">
+    <div class="stage">
+      <div class="card-wrap">
+        <div class="grip grip--tape"><svg width="15" height="15" viewBox="0 0 24 24" style="rotate:38deg"><use href="#i-dots"/></svg></div>
+        <div class="mm-node is-focused b-pink">quarterly plan</div>
+      </div>
+      <div class="detail" style="font-family:var(--mm-font-script); font-size:15px">tape</div>
+    </div>
+    <h3>six · washi tape</h3>
+    <p>a strip of marker-orange tape over the corner — grab the tape, carry the card. pure papercraft, least button-like.</p>
+  </div>
+
+  <div class="concept">
+    <div class="stage">
+      <div class="card-wrap">
+        <div class="grip grip--claw"><svg width="26" height="26" viewBox="0 0 24 24"><use href="#i-claw"/></svg></div>
+        <div class="mm-node is-focused b-green">quarterly plan</div>
+      </div>
+      <div class="detail"><svg width="40" height="40" viewBox="0 0 24 24"><use href="#i-claw"/></svg></div>
+    </div>
+    <h3>seven · corner strokes</h3>
+    <p>three pen flicks off the corner — barely chrome at all, like a margin doodle. subtle to a fault?</p>
+  </div>
+
+</div>
+
+<p class="verdict"><strong>my leaning:</strong> four (folder tab) for feel — it reads as part of the card and gives the
+fattest drag target — with two (inky dots) as the quiet runner-up if the tab crowds the ghosts.
+zero, one and three keep the floating-badge layout we already ship; four, five, six change the silhouette.</p>
+
+<script>
+  /* playground: focus hopping + a drag you can feel (visual only, snaps home) */
+  const stage = document.getElementById('playstage');
+
+  stage.addEventListener('click', e => {
+    const card = e.target.closest('.mm-node');
+    if (!card || e.target.closest('.play-tab')) return;
+    for (const n of stage.querySelectorAll('.play-node')) {
+      const mine = n.contains(card);
+      n.classList.toggle('focused', mine);
+      n.querySelector('.mm-node').classList.toggle('is-focused', mine);
+    }
+  });
+
+  let drag = null;
+  stage.addEventListener('pointerdown', e => {
+    const tab = e.target.closest('.play-tab');
+    if (!tab) return;
+    e.preventDefault();
+    tab.setPointerCapture(e.pointerId);
+    drag = { wrap: tab.closest('.play-node'), x: e.clientX, y: e.clientY };
+    drag.wrap.classList.add('dragging');
+  });
+  stage.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    drag.wrap.style.translate = `${dx}px ${dy}px`;
+    drag.wrap.style.rotate = Math.max(-5, Math.min(5, dx * .04)) + 'deg';
+  });
+  const release = () => {
+    if (!drag) return;
+    drag.wrap.classList.remove('dragging');   // transition back on…
+    drag.wrap.style.translate = '';           // …and spring home
+    drag.wrap.style.rotate = '';
+    drag = null;
+  };
+  stage.addEventListener('pointerup', release);
+  stage.addEventListener('pointercancel', release);
+
+  /* desktop: tab on hover only · touch: tab rides the focused card */
+  const toggle = document.getElementById('modetoggle');
+  toggle.addEventListener('click', () => {
+    const touch = stage.classList.toggle('touch');
+    toggle.textContent = touch
+      ? '☝ touch mode — tab rides the focused card. click for hover mode'
+      : '🖱 hover mode — click to simulate touch';
+  });
+</script>
+</body>
+</html>
