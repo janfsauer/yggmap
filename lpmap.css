@@ -68,3 +68,13 @@ body.mobile .lp-status { font-size: 13px; max-width: 26vw; overflow: hidden; tex
 body.mobile #lp-panel { left: 8px; right: 8px; width: auto; top: auto; bottom: calc(78px + env(safe-area-inset-bottom)); height: 46vh; }
 body.mobile.lp-min #lp-panel { height: auto; }
 body.mobile #lp-title { font-size: 16px; max-height: 4em; }
+#mapsbtn, #changesbtn { display: none !important; }
+.lp-ui .mini {
+  font-family: var(--mm-font-hand); font-size: 15px; color: var(--mm-ink-soft); cursor: pointer;
+  background: var(--mm-card); border: 1.8px solid var(--mm-ink-faint); padding: 3px 11px 2px;
+  border-radius: 12px 5px 14px 5px / 5px 14px 5px 12px;
+}
+.lp-ui .mini:hover { color: var(--mm-ink); border-color: var(--mm-ink); }
+.lp-ui .mini.accent { border-color: var(--mm-marker); color: var(--mm-ink); background: rgba(255, 138, 92, .1); }
+#lp-menubtn { font-size: 18px; padding: 2px 10px; }
+#lp-gate .mini { font-size: 17px; padding: 6px 12px; }

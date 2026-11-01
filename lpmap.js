@@ -55,7 +55,7 @@
   function startApp() {
     q('#lp-gate').classList.remove('open');
     localStorage.setItem('mindmaps.current.v1', MAP_ID);
-    const s = document.createElement('script'); s.src = 'app.js?v=lp1';
+    const s = document.createElement('script'); s.src = 'app.js?v=lp2';
     s.onload = afterApp; document.body.appendChild(s);
   }
   let booted = false;
