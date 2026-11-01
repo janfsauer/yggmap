@@ -55,7 +55,7 @@
   function startApp() {
     q('#lp-gate').classList.remove('open');
     localStorage.setItem('mindmaps.current.v1', MAP_ID);
-    const s = document.createElement('script'); s.src = 'app.js?v=lp2';
+    const s = document.createElement('script'); s.src = 'app.js?v=lp3';
     s.onload = afterApp; document.body.appendChild(s);
   }
   let booted = false;
@@ -180,6 +180,11 @@
     q('#lp-count').textContent = cnt === null ? '' : cnt + ' stor' + (cnt === 1 ? 'y' : 'ies') + ' here';
   }
   window.lpAfterRefresh = lpUi;
+  window.lpReserve = () => {
+    const el = q('#lp-panel'); if (!el || !el.classList.contains('show')) return {};
+    const r = el.getBoundingClientRect();
+    return document.body.classList.contains('mobile') ? { b: innerHeight - r.top + 16 } : { r: innerWidth - r.left + 16 };
+  };
   function flushBody() {
     clearTimeout(bodyTimer);
     if (bodySnap === null) return;

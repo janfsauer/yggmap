@@ -1122,7 +1122,8 @@ function ensureVisible(id) {
   }
   const W = innerWidth;
   const H = window.visualViewport ? visualViewport.height : innerHeight;
-  const mL = 40, mR = 40, mT = 80, mB = 130;
+  const res = window.lpReserve?.() || {}; // lp-story-map: keep focused nodes out from under the details panel
+  const mL = 40, mR = 40 + (res.r || 0), mT = 80, mB = Math.max(130, res.b || 0);
   // per axis: fit the node+ghost union; if it simply can't fit
   // (e.g. sibling ghost below a tall subtree), the node itself wins
   const fit = (lo, hi, nlo, nhi, mLo, mHi, span) => {
