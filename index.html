@@ -3,37 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>yggmap — free private mind maps</title>
-<meta name="description" content="Free mind mapping that stays yours: no account, no server, no tracking — your maps live in your browser. Keyboard-first, hand-drawn feel, works on phones too.">
-<link rel="canonical" href="https://yggmap.com/">
+<title>LP Story Map</title>
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+<meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#f8f3e7">
-
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="yggmap">
-<meta property="og:title" content="yggmap — free private mind maps">
-<meta property="og:description" content="Free mind mapping that stays yours: no account, no server, no tracking — your maps live in your browser.">
-<meta property="og:url" content="https://yggmap.com/">
-<meta property="og:image" content="https://yggmap.com/assets/og-image.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="A hand-drawn style mind map about a summer road trip, made in yggmap">
-<meta name="twitter:card" content="summary_large_image">
-
-<script type="application/ld+json">
-{"@context":"https://schema.org","@type":"WebApplication","name":"yggmap",
- "url":"https://yggmap.com/","applicationCategory":"ProductivityApplication",
- "operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},
- "description":"Free, fully private mind mapping in the browser — no account, no server, maps stored locally."}
-</script>
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-<link rel="manifest" href="manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="yggmap">
+<meta name="apple-mobile-web-app-title" content="LP Map">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="stylesheet" href="styles.css"><!-- fonts are self-hosted, declared in styles.css -->
+<link rel="stylesheet" href="styles.css?v=lp1">
+<link rel="stylesheet" href="lpmap.css?v=lp1"><!-- fonts are self-hosted, declared in styles.css -->
 <style>
   /* ---- app shell (component styles live in styles.css) ---- */
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -170,15 +152,63 @@
   </div>
 
   <div class="topbar">
-    <div style="display:flex; align-items:center; gap:16px">
-      <span class="mm-wordmark"><img class="mark" src="assets/mark.webp" alt="">yggmap</span>
-      <button class="mm-help" id="mapsbtn" style="width:auto; height:34px; padding:0 14px; font-size:15px; transform:rotate(-1deg)">☰ my maps</button>
+    <div class="lp-ui lp-left">
+      <span class="mm-wordmark lp-word">LP map</span>
+      <div class="lp-searchwrap">
+        <input id="lp-search" type="search" placeholder="search stories &amp; questions" autocomplete="off" enterkeyhint="search">
+        <div id="lp-results" class="mm-scroll"></div>
+      </div>
     </div>
-    <div style="display:flex; align-items:center; gap:14px">
-      <button class="mm-newslink" id="changesbtn">what’s new</button>
-      <a id="ghlink" href="https://github.com/genail/yggmap" target="_blank" rel="noopener" title="source on GitHub" aria-label="source on GitHub">
-        <svg viewBox="0 0 16 16" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
-      </a>
+    <div class="lp-ui lp-right">
+      <span id="lp-status" class="lp-status">loading…</span>
+      <button class="mini" id="lp-menubtn">☰</button>
+      <div id="lp-menu">
+        <button id="lp-expand">expand everything</button>
+        <button id="lp-fold">fold everything</button>
+        <button id="lp-md">export Markdown</button>
+        <button id="lp-json">export JSON</button>
+        <button id="lp-versions">versions / restore</button>
+        <button id="lp-help">keyboard &amp; how-to</button>
+        <a href="https://github.com/genail/yggmap" target="_blank" rel="noopener noreferrer">built on yggmap (MIT)</a>
+      </div>
+      <button class="mm-help" id="mapsbtn" hidden>maps</button>
+      <button id="changesbtn" hidden></button>
+    </div>
+  </div>
+
+  <div id="lp-panel" class="lp-ui">
+    <div class="lp-phead">
+      <div><div id="lp-kind"></div><div id="lp-path"></div></div>
+      <button class="mini" id="lp-collapse" title="shrink / grow">▾</button>
+    </div>
+    <div id="lp-title"></div>
+    <textarea id="lp-body" class="mm-scroll" spellcheck="true"></textarea>
+    <div class="lp-actions">
+      <button class="mini" id="lp-rename">rename</button>
+      <button class="mini accent" id="lp-addstory">＋ story</button>
+      <button class="mini" id="lp-move">move</button>
+      <button class="mini" id="lp-dup">copy</button>
+      <button class="mini" id="lp-orig">original</button>
+      <button class="mini" id="lp-del">delete</button>
+      <span id="lp-count"></span>
+    </div>
+  </div>
+
+  <div id="lp-gate" class="lp-ui">
+    <form id="lp-gate-form" class="mm-panel">
+      <h3 class="mm-panel-title">LP Story Map</h3>
+      <p>private — enter your passcode</p>
+      <input id="lp-gate-input" type="password" autocomplete="current-password" placeholder="passcode">
+      <button class="mini accent" type="submit">open</button>
+      <p id="lp-gate-msg"></p>
+    </form>
+  </div>
+
+  <div id="lp-text" class="lp-ui">
+    <div class="mm-panel">
+      <h3 class="mm-panel-title" id="lp-text-title"></h3>
+      <div id="lp-text-body" class="mm-scroll"></div>
+      <button class="mini" id="lp-text-close">close</button>
     </div>
   </div>
 
@@ -314,7 +344,7 @@
 
   <div id="toasts"></div>
 
-  <script src="sketch.js"></script>
-  <script src="app.js"></script>
+  <script src="sketch.js?v=lp1"></script>
+  <script src="lpmap.js?v=lp1"></script>
 </body>
 </html>

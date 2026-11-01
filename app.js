@@ -157,6 +157,7 @@ function saveDoc() {
   if (!entry) return; // current map was just deleted (possibly in another tab); don't resurrect it
   localStorage.setItem(mapKey(currentMapId), json);
   lastSavedDoc = json;
+  window.lpAfterSave?.(json); // lp-story-map: queue the cloud push
   entry.title = titleOf(doc);
   entry.updated = Date.now();
   saveIndex();
@@ -395,6 +396,7 @@ function renderShadow(shadow) {
       if (depth === 0) cls += ' mm-node--root';
       else if (depth >= 2 && !node.children.length && !node.color) cls += ' mm-node--leaf';
       if (node.color) cls += ' b-' + node.color;
+      if (window.lpNodeClass) cls += window.lpNodeClass(node, depth);
       if (sh.id === focusId && sh.id !== editingId) cls += ' is-focused';
       if (sh.id === editingId) cls += ' is-editing';
       if (sh.id === grabId) cls += ' is-dragging';
@@ -406,7 +408,7 @@ function renderShadow(shadow) {
         // an empty root stays truly :empty so the CSS placeholder shows
         const emptyRoot = depth === 0 && !node.text;
         if (emptyRoot) el.dataset.ph = 'your central idea';
-        const html = (emptyRoot ? '' : escapeHTML(node.text || ' ')) + badge;
+        const html = (window.lpNodePrefix?.(node) || '') + (emptyRoot ? '' : escapeHTML(node.text || ' ')) + badge;
         // '∅' keeps "render nothing" distinct from the cleared cache key
         const key = html || '∅';
         if (el.dataset.label !== key) { el.innerHTML = html; el.dataset.label = key; }
@@ -554,6 +556,7 @@ function refresh() {
   renderChrome();
   renderGrip();
   saveDoc(); saveUI();
+  window.lpAfterRefresh?.();
 }
 
 let indexDirty = true;
@@ -788,6 +791,7 @@ function createChild(parent) {
   if (!parent || guardReadOnly()) return;
   pushUndo();
   const node = newNode();
+  window.lpInitNode?.(node, parent);
   if (parent.id === doc.root.id) {
     node.color = COLOR_CYCLE[parent.children.length % COLOR_CYCLE.length];
     node.side = lighterSide();
@@ -804,6 +808,7 @@ function createSibling(node) {
   pushUndo();
   const parent = parentMap.get(node.id);
   const sib = newNode();
+  window.lpInitNode?.(sib, parent);
   if (parent.id === doc.root.id) { sib.color = node.color; sib.side = node.side; }
   parent.children.splice(parent.children.indexOf(node) + 1, 0, sib);
   markDirty(); focusId = sib.id;
@@ -893,8 +898,12 @@ function cancelGrab() {
 }
 
 function dropGrab(targetId) {
-  const node = nodeMap.get(grabId), target = nodeMap.get(targetId);
+  const node = nodeMap.get(grabId);
+  let target = nodeMap.get(targetId);
   if (!node || !target) { cancelGrab(); return; }
+  // lp-story-map: a story dropped on another story lands next to it (same parent)
+  if (node.kind === 'story' && target.kind === 'story') target = parentMap.get(target.id);
+  if (node.kind === 'story' && target === doc.root) { toast('drop a story on an LP, a question or the ★ list'); return; }
   for (let t = target; t; t = parentMap.get(t.id))
     if (t === node) { toast("a branch can't move into itself"); return; }
   if (guardReadOnly()) return; // the latch may have flipped mid-grab
@@ -1325,6 +1334,7 @@ let spaceDown = false;
 
 document.addEventListener('keydown', e => {
   if (editingId) return; // handled on the element
+  if (e.target.closest && e.target.closest('.lp-ui')) return; // lp-story-map panel / search typing
   const mod = e.metaKey || e.ctrlKey;
 
   if (mod && e.key.toLowerCase() === 'z') {
@@ -1735,8 +1745,9 @@ addEventListener('hashchange', importSharedFromHash);
 // offline support: sw.js keeps a network-first cache snapshot of the app
 // shell. Registration failure (old browser, sandboxed context) costs nothing —
 // the app just stays online-only.
+// lp-story-map: no service worker (GitHub Pages subpath + cloud sync); drop any stale one
 if ('serviceWorker' in navigator)
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  navigator.serviceWorker.getRegistrations?.().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
 
 /* iOS home-screen apps run in their own storage container, separate from the
    Safari tab's — a user who had maps there would otherwise conclude they were
