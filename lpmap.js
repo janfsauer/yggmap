@@ -55,7 +55,7 @@
   function startApp() {
     q('#lp-gate').classList.remove('open');
     localStorage.setItem('mindmaps.current.v1', MAP_ID);
-    const s = document.createElement('script'); s.src = 'app.js?v=lp3';
+    const s = document.createElement('script'); s.src = 'app.js?v=lp4';
     s.onload = afterApp; document.body.appendChild(s);
   }
   let booted = false;
@@ -163,7 +163,9 @@
     const panel = q('#lp-panel');
     const n = cur();
     if (!n || n.kind === 'root' || !n.kind) { panel.classList.remove('show'); shownId = null; return; }
+    const wasHidden = !panel.classList.contains('show');
     panel.classList.add('show');
+    if (wasHidden) setTimeout(() => ensureVisible(n.id), 0); // panel now covers part of the screen
     if (shownId === n.id && document.activeElement === q('#lp-body')) return;
     if (shownId !== n.id) flushBody();
     shownId = n.id;
